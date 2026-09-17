@@ -1,6 +1,9 @@
-# PulseCast — Production Deployment Guide
+# PulseCast — Production Deployment Guide (Native / No Docker)
 
-This guide provides step-by-step instructions to deploy PulseCast to **Render** or **Railway** with full live real-time WebSocket support, MongoDB Atlas persistence, and Upstash Redis Pub/Sub.
+This guide provides step-by-step instructions to deploy PulseCast **without Docker**, using native cloud runtimes:
+- **Backend**: Native Go Web Service (Render or Railway)
+- **Frontend**: High-speed Static CDN (Render Static Site, Vercel, or Netlify)
+- **Database & Pub/Sub**: Cloud MongoDB Atlas & Upstash Redis
 
 ---
 
@@ -9,143 +12,108 @@ This guide provides step-by-step instructions to deploy PulseCast to **Render** 
 Ensure you have your cloud credentials ready:
 1. **MongoDB Atlas URI**: Cloud MongoDB database connection string (`mongodb+srv://...`).
 2. **Upstash Redis URI**: Cloud Redis TLS URL (`rediss://...`).
-3. **GitHub Repository**: Push your PulseCast codebase to a GitHub repository (private or public).
+3. **GitHub Repository**: Push your code to [https://github.com/srikanthr7/PulseCast.git](https://github.com/srikanthr7/PulseCast.git).
 
 ---
 
-## 🚀 Option 1: Deploy on Render (Recommended)
+## 🚀 Option 1: Deploy on Render (Recommended — 100% Free & No Docker)
 
-Render offers free/low-cost tiers for both Docker web services (Go backend) and Static Sites (React frontend) with native WebSocket support over `wss://`.
+Render supports native **Go runtimes** (compiles Go directly without containers) and **Static Sites** with global CDN and automated SSL.
 
 ### Method A: 1-Click Blueprint (Easiest)
 
-1. Push your code (including the included `render.yaml`) to your GitHub repository.
-2. Log in to [Render Dashboard](https://dashboard.render.com).
+1. Ensure your latest changes to `render.yaml` are pushed to GitHub:
+   ```powershell
+   git add render.yaml .gitignore
+   git commit -m "feat: native go and static site deployment without docker"
+   git push origin main
+   ```
+2. Go to [Render Dashboard](https://dashboard.render.com).
 3. Click **New +** → **Blueprint**.
-4. Connect your `PulseCast` repository.
-5. Render will automatically detect `render.yaml` and configure both services:
-   - **`pulsecast-backend`** (Docker Web Service)
-   - **`pulsecast-frontend`** (Static Site with SPA rewrite rules)
+4. Connect your **`PulseCast`** repository.
+5. Render will detect `render.yaml` and configure:
+   - **`pulsecast-backend`**: Native Go web service (`runtime: go`)
+   - **`pulsecast-frontend`**: Static Vite application (`runtime: static`)
 6. When prompted for environment variables, fill in:
-   - `MONGODB_URI`: Your MongoDB Atlas URI
-   - `REDIS_URL`: Your Upstash Redis URI
-7. Click **Apply**. Render will automatically build and deploy both services!
+   - `MONGODB_URI`: `mongodb+srv://srikanthprofessional07_db_user:0GPVvXzJBqVAV5MQ@cluster0.zp5oeso.mongodb.net/?retryWrites=true&w=majority`
+   - `REDIS_URL`: `rediss://default:gQAAAAAABEk1AAIgcDExYjUzMTQ3NzllNTU0OWZhOTdkZjkwNTliMWFjZTc4ZQ@careful-eft-280885.upstash.io:6379`
+7. Click **Apply**. Render will automatically build the Go binary and Vite frontend assets.
 
 ---
 
-### Method B: Manual Step-by-Step on Render
+### Method B: Manual Configuration on Render
 
-#### Step 1: Deploy the Go Backend
+#### Step 1: Deploy the Go Backend (Web Service)
 1. In Render Dashboard, click **New +** → **Web Service**.
-2. Connect your GitHub repo.
-3. Configure settings:
+2. Connect your `PulseCast` GitHub repo.
+3. Configure the settings:
    - **Name**: `pulsecast-backend`
+   - **Language / Runtime**: `Go`
    - **Root Directory**: `backend`
-   - **Runtime**: `Docker` (or `Go` with Build Command: `go build -o server main.go`, Start Command: `./server`)
-   - **Instance Type**: Free or Starter
+   - **Build Command**: `go build -o server .`
+   - **Start Command**: `./server`
+   - **Plan**: Free
 4. Under **Environment Variables**, add:
-   | Key | Value |
-   | :--- | :--- |
-   | `PORT` | `8080` |
-   | `GIN_MODE` | `release` |
-   | `DB_NAME` | `pulsecast` |
-   | `MONGODB_URI` | `mongodb+srv://...` |
-   | `REDIS_URL` | `rediss://...` |
-   | `JWT_SECRET` | *(Any secure random 32-character string)* |
+   | Key | Value | Notes |
+   | :--- | :--- | :--- |
+   | `PORT` | `8080` | Render assigns port automatically |
+   | `GIN_MODE` | `release` | Production mode |
+   | `DB_NAME` | `pulsecast` | Database name |
+   | `MONGODB_URI` | `mongodb+srv://...` | Your Atlas connection URI |
+   | `REDIS_URL` | `rediss://...` | Your Upstash Redis connection URI |
+   | `JWT_SECRET` | `pulsecast_super_secret_jwt_key_2026` | Auth signing secret |
 5. Click **Deploy Web Service**.
-6. Note down your backend URL (e.g., `https://pulsecast-backend.onrender.com`).
+6. Copy your live backend URL (e.g. `https://pulsecast-backend.onrender.com`).
+7. Test the health endpoint: `https://pulsecast-backend.onrender.com/health`.
 
-#### Step 2: Deploy the React Frontend
+---
+
+#### Step 2: Deploy the React Frontend (Static Site)
 1. In Render Dashboard, click **New +** → **Static Site**.
-2. Connect the same GitHub repository.
-3. Configure settings:
+2. Connect your `PulseCast` GitHub repo.
+3. Configure the settings:
    - **Name**: `pulsecast-frontend`
    - **Root Directory**: `frontend`
    - **Build Command**: `npm install && npm run build`
    - **Publish Directory**: `dist`
-4. Under **Environment Variables**, add:
+4. Under **Environment Variables**, configure the API routes:
    | Key | Value | Example |
    | :--- | :--- | :--- |
    | `VITE_API_URL` | `https://<YOUR-BACKEND-URL>/api` | `https://pulsecast-backend.onrender.com/api` |
    | `VITE_WS_URL` | `wss://<YOUR-BACKEND-URL>/api/ws` | `wss://pulsecast-backend.onrender.com/api/ws` |
-5. Under **Redirects/Rewrites**:
-   - Source: `/*`
-   - Destination: `/index.html`
-   - Action: `Rewrite`
+5. Under **Redirects / Rewrites**:
+   - **Source**: `/*`
+   - **Destination**: `/index.html`
+   - **Action**: `Rewrite` *(ensures React Router SPA navigation works without 404s)*
 6. Click **Create Static Site**.
 
 ---
 
-## 🚆 Option 2: Deploy on Railway
+## ⚡ Option 2: Deploy Frontend on Vercel + Backend on Render
 
-Railway supports full-stack projects with automated Docker detection and persistent WebSocket support.
+Vercel provides ultra-fast CDN edges for Vite React apps.
 
-### Step 1: Deploy the Backend Service
-1. Go to [Railway.app](https://railway.app) and create a **New Project**.
-2. Select **Deploy from GitHub repo** and pick `PulseCast`.
-3. In service settings, set **Root Directory** to `backend`.
-4. Railway will automatically detect `backend/Dockerfile`.
-5. Under **Variables**, add:
-   ```env
-   PORT=8080
-   GIN_MODE=release
-   DB_NAME=pulsecast
-   MONGODB_URI=mongodb+srv://...
-   REDIS_URL=rediss://...
-   JWT_SECRET=pulsecast_super_secret_jwt_key_2026
-   ```
-6. Under **Settings** → **Networking**, click **Generate Domain** (e.g. `pulsecast-backend.up.railway.app`).
-
-### Step 2: Deploy the Frontend Service
-1. In the same Railway project, click **New** → **GitHub Repo** → select `PulseCast` again.
-2. In service settings, set **Root Directory** to `frontend`.
-3. Railway will automatically detect `frontend/Dockerfile` (using Nginx + SPA routing).
-4. Under **Variables**, add:
-   ```env
-   VITE_API_URL=https://pulsecast-backend.up.railway.app/api
-   VITE_WS_URL=wss://pulsecast-backend.up.railway.app/api/ws
-   ```
-5. Under **Settings** → **Networking**, click **Generate Domain** (e.g. `pulsecast.up.railway.app`).
-
----
-
-## 🐳 Option 3: Deploy with Docker Compose (Any VPS / Cloud VM)
-
-If deploying to a VPS (Ubuntu / Debian / AWS EC2 / DigitalOcean Droplet):
-
-1. Clone your repository:
-   ```bash
-   git clone <YOUR-REPO-URL>
-   cd PulseCast
-   ```
-2. Create your `.env` file in the root directory:
-   ```bash
-   MONGODB_URI="mongodb+srv://..."
-   REDIS_URL="rediss://..."
-   JWT_SECRET="pulsecast_super_secret_jwt_key_2026"
-   VITE_API_URL="https://api.yourdomain.com/api"
-   VITE_WS_URL="wss://api.yourdomain.com/api/ws"
-   ```
-3. Start the containers:
-   ```bash
-   docker compose up -d --build
-   ```
-4. Check running status:
-   ```bash
-   docker compose ps
-   ```
+### 1. Deploy Frontend on Vercel
+1. Go to [vercel.com](https://vercel.com) and click **Add New...** → **Project**.
+2. Import `srikanthr7/PulseCast`.
+3. In the setup screen:
+   - **Root Directory**: Click `Edit` and select `frontend`.
+   - **Framework Preset**: Vite
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+4. Expand **Environment Variables** and add:
+   - `VITE_API_URL`: `https://pulsecast-backend.onrender.com/api`
+   - `VITE_WS_URL`: `wss://pulsecast-backend.onrender.com/api/ws`
+5. Click **Deploy**.
 
 ---
 
 ## 🔍 Post-Deployment Verification
 
-Once deployed, verify your live production instance:
+Once deployed, verify your live system:
 
-1. **Verify Backend Health**:
-   ```bash
-   curl https://<YOUR-BACKEND-URL>/health
-   ```
-   Expected response:
+1. **Backend Health Check**:
+   Visit `https://<YOUR-BACKEND-URL>/health` in your browser:
    ```json
    {
      "active_ws": 0,
@@ -155,13 +123,13 @@ Once deployed, verify your live production instance:
    }
    ```
 
-2. **Verify Creator Portal**:
-   - Open your frontend domain in the browser.
-   - Create a Creator account or sign in.
-   - Design a sample multi-question poll.
+2. **Test Creator Authentication**:
+   - Open your frontend domain.
+   - Click **Sign Up** to create an account.
+   - Verify that your token is saved and the Creator Dashboard loads.
 
-3. **Verify Real-Time Mobile Voting**:
-   - Open the **Projector View** (`/present/:id`).
-   - Scan the QR code with your mobile phone (or open the `/vote/:id` URL).
-   - Enter your voter name and submit a vote.
-   - Observe the live bar chart and leaderboard instantly animate over WebSockets!
+3. **Test Real-Time Mobile Voting & WebSocket**:
+   - Create a poll or use a sample poll.
+   - Open the **Presentation View** (`/present/:id`).
+   - Scan the on-screen QR code from your phone (or visit `/vote/:id`).
+   - Submit a vote; verify that the chart updates instantly on the presenter screen via WebSockets.

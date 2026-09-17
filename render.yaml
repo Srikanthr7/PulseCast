@@ -4,9 +4,10 @@ services:
   # ============================================================================
   - type: web
     name: pulsecast-backend
-    runtime: docker
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    runtime: go
+    rootDir: backend
+    buildCommand: go build -o server .
+    startCommand: ./server
     plan: free
     healthCheckPath: /health
     autoDeploy: true
