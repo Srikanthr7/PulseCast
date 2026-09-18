@@ -642,11 +642,11 @@ export default function CreatorDashboard() {
           <Smartphone size={isMobile ? 16 : 18} />
         </div>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <h3 style={{ fontSize: isMobile ? '0.92rem' : '0.98rem', fontWeight: 800, color: '#2B2B2B', marginBottom: '2px', fontFamily: "'Special Elite', monospace" }}>
-            Audience Quick Join
+          <h3 style={{ fontSize: isMobile ? '0.94rem' : '1.02rem', fontWeight: 800, color: '#2B2B2B', marginBottom: '2px', fontFamily: "'Special Elite', monospace" }}>
+            Have a Poll Code?
           </h3>
-          <p style={{ fontSize: isMobile ? '0.74rem' : '0.78rem', color: '#555555' }}>
-            Enter presenter's session PIN to vote:
+          <p style={{ fontSize: isMobile ? '0.76rem' : '0.8rem', color: '#555555' }}>
+            Enter the code from your presenter's screen to vote:
           </p>
         </div>
       </div>
@@ -662,7 +662,7 @@ export default function CreatorDashboard() {
       >
         <input
           type="text"
-          placeholder="e.g. 6aacb98f5be43c0cbaadccaa"
+          placeholder="e.g. 6a1b2c (or paste poll link)"
           value={joinSessionInput}
           onChange={(e) => setJoinSessionInput(e.target.value)}
           className="input-field"
@@ -674,7 +674,7 @@ export default function CreatorDashboard() {
           disabled={!joinSessionInput.trim()}
           style={{ padding: isMobile ? '10px 14px' : '9px 14px', fontSize: '0.85rem', whiteSpace: 'nowrap', justifyContent: 'center', width: isMobile ? '100%' : 'auto' }}
         >
-          Join Poll
+          Join &amp; Vote Now
           <ArrowRight size={14} />
         </button>
       </form>
@@ -697,13 +697,13 @@ export default function CreatorDashboard() {
     >
       <div style={{ textAlign: 'center', marginBottom: '20px' }}>
         <div className="stamp-seal" style={{ marginBottom: '10px', fontSize: isMobile ? '0.7rem' : '0.78rem' }}>
-          CREATOR &amp; HOST PORTAL
+          HOST &amp; PRESENTER SIGN-IN
         </div>
         <h2 style={{ fontSize: isMobile ? '1.5rem' : '2.1rem', marginBottom: '8px', color: '#2B2B2B', fontFamily: "'Special Elite', monospace" }}>
-          Host Portal &amp; Studio
+          Host a Live Poll
         </h2>
         <p style={{ color: '#555555', fontSize: isMobile ? '0.82rem' : '0.88rem', lineHeight: 1.45 }}>
-          Sign in or register your host account to design and present interactive multi-question polls.
+          Sign in or create a free account to ask questions, display QR codes on your screen, and view live results.
         </p>
       </div>
 
@@ -904,9 +904,9 @@ export default function CreatorDashboard() {
           {authLoading ? (
             <Loader2 size={18} className="animate-spin" />
           ) : authMode === 'signup' ? (
-            'Create Host Account'
+            'Create Free Host Account'
           ) : (
-            'Sign In & Access Studio'
+            'Sign In & Launch Polls'
           )}
         </button>
       </form>

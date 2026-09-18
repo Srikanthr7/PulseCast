@@ -20,6 +20,8 @@ import {
   Radio,
   Target,
   Rocket,
+  PlusCircle,
+  CheckCircle2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useDeviceType } from '../hooks/useDeviceType';
@@ -28,12 +30,15 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
   const { isMobile, isTablet } = useDeviceType();
   const isNarrow = isMobile || isTablet;
 
+  // Active Get-Started Tab: 'audience' | 'host'
+  const [activeTab, setActiveTab] = useState('audience');
+
   // Interactive Simulator State
   const [demoVotes, setDemoVotes] = useState({
-    opt1: 42,
-    opt2: 28,
-    opt3: 19,
-    opt4: 11,
+    opt1: 54,
+    opt2: 38,
+    opt3: 29,
+    opt4: 17,
   });
   const [votedOption, setVotedOption] = useState(null);
   const [hasSimulated, setHasSimulated] = useState(false);
@@ -52,8 +57,8 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
 
     try {
       confetti({
-        particleCount: isMobile ? 30 : 45,
-        spread: 55,
+        particleCount: isMobile ? 35 : 50,
+        spread: 60,
         origin: { y: 0.75 },
         colors: ['#2563EB', '#DC2626', '#2B2B2B', '#EBE7DD'],
       });
@@ -63,7 +68,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
   };
 
   const handleResetDemo = () => {
-    setDemoVotes({ opt1: 42, opt2: 28, opt3: 19, opt4: 11 });
+    setDemoVotes({ opt1: 54, opt2: 38, opt3: 29, opt4: 17 });
     setVotedOption(null);
     setHasSimulated(false);
   };
@@ -71,44 +76,44 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
   const FEATURES = [
     {
       icon: Zap,
-      badge: 'SPEED',
-      title: 'Sub-10ms Real-Time Sync',
-      desc: 'Engineered with a high-throughput Go (Gin) engine and non-blocking WebSockets. Votes cast on smartphones instantly animate the host’s presentation screen with zero lag.',
+      badge: 'REAL-TIME',
+      title: 'Instant Live Results',
+      desc: 'Votes appear on the presentation screen the exact millisecond your audience taps their phones. Zero lag and no manual page refreshing.',
       color: '#2563EB',
     },
     {
       icon: QrCode,
-      badge: 'FRICTIONLESS',
-      title: 'Zero-Install QR Scan',
-      desc: 'Room participants simply point their camera at the presentation screen or type the Session PIN. No mobile app downloads and no mandatory accounts.',
+      badge: 'NO APP NEEDED',
+      title: 'Zero App Downloads',
+      desc: 'Audience members simply point their phone camera at the screen to join. Works seamlessly on iPhone, Android, Safari, and Chrome.',
       color: '#2B2B2B',
     },
     {
       icon: Trophy,
       badge: 'ENGAGEMENT',
-      title: 'Live Leaderboards & Podium',
-      desc: 'Track participation and crown quiz champions. Automatic score calculation, voter name attribution, and celebratory confetti animations finalize each session.',
+      title: 'Leaderboards & Confetti',
+      desc: 'Turn lectures and team meetings into games! Celebrate winners with dynamic answer podiums and celebratory confetti animations.',
       color: '#DC2626',
     },
     {
       icon: Layers,
-      badge: 'AESTHETICS',
-      title: 'Tactile Brutalist Paper',
-      desc: 'Inspired by authentic physical paper ballots with natural paper grain, typewriter monospace typography (Special Elite), 90° sharp borders, and ink rubber stamps.',
+      badge: 'CLEAN LOOK',
+      title: 'Clear & Distraction-Free',
+      desc: 'High-contrast, vintage paper ballot aesthetic designed to be readable across a packed auditorium, lecture hall, or Zoom screen share.',
       color: '#2B2B2B',
     },
     {
       icon: Radio,
-      badge: 'SEQUENCING',
-      title: 'Multi-Question Sequencer',
-      desc: 'Build multi-stage interactive journeys. Choose from pre-loaded tech sprint, architecture pulse, or retrospective templates, or craft custom questions.',
+      badge: 'FLEXIBLE',
+      title: 'Single Poll or Full Quiz',
+      desc: 'Ask one quick icebreaker question during a presentation, or run multi-stage quiz competitions and team retrospectives with ease.',
       color: '#2563EB',
     },
     {
       icon: ShieldCheck,
-      badge: 'RELIABILITY',
-      title: 'Dual-Sync Architecture',
-      desc: 'Direct in-memory WebSocket broadcasting paired with automated background polling and Redis pub/sub. If Wi-Fi flinches, live sync automatically heals itself.',
+      badge: 'ROCK-SOLID',
+      title: 'Works on Any Wi-Fi',
+      desc: 'Engineered to stay connected reliably even on crowded university networks, event hall Wi-Fi, or cellular mobile data.',
       color: '#DC2626',
     },
   ];
@@ -116,40 +121,44 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
   const HOW_IT_WORKS = [
     {
       step: '01',
-      title: 'Host Creates Session',
-      desc: 'Draft single or multi-question polls in seconds using quick presets or your own prompts. Set 2 to 4 distinct voting choices.',
+      title: '1. Type Your Question',
+      desc: 'Create a single question or multi-question poll in 30 seconds. Choose 2 to 4 answer choices or use ready-made templates.',
       icon: Rocket,
     },
     {
       step: '02',
-      title: 'Audience Scans & Connects',
-      desc: 'Display the auto-generated Wi-Fi QR code or Session PIN on your conference projector or laptop. Audience members join directly from mobile browsers.',
+      title: '2. Audience Scans QR Code',
+      desc: 'Display the auto-generated QR code on your projector or Zoom screen. Attendees join from their phone browsers without downloading any app.',
       icon: Smartphone,
     },
     {
       step: '03',
-      title: 'Live Stream & Final Podium',
-      desc: 'Watch the voting bars react live to audience votes. Conclude the poll with one click to trigger confetti and reveal top choices on the leaderboard.',
+      title: '3. Watch Live Results Roll In',
+      desc: 'Watch the voting bars react on screen live as hands tap screens. Conclude the poll with one click to reveal top answers and celebrate winners!',
       icon: Trophy,
     },
   ];
 
   const FAQS = [
     {
-      q: 'Do audience members need to download an app or create an account?',
-      a: 'Never. PulseCast works 100% inside any modern mobile browser (Safari, Chrome, Firefox). Audience members just scan the host’s QR code or enter the session PIN to vote immediately.',
+      q: 'Do audience members or students need to download an app or sign up?',
+      a: 'Never! PulseCast works 100% inside any mobile web browser (Safari, Chrome, Firefox). Audience members just point their phone camera at the QR code on your screen to vote immediately. No accounts, passwords, or app downloads needed.',
     },
     {
-      q: 'How fast is the live synchronization between phone and laptop?',
-      a: 'Votes are processed by the Go backend via atomic MongoDB operations and pushed over in-memory WebSockets in under 10 milliseconds. Host projector bars update instantly as hands tap screens.',
+      q: 'Is PulseCast really 100% free?',
+      a: 'Yes, PulseCast is completely free to use with unlimited audience voters and unlimited polls.',
     },
     {
-      q: 'Can this be run on local Wi-Fi without an active internet connection?',
-      a: 'Yes! PulseCast automatically resolves the presenter laptop’s local Wi-Fi LAN IP (e.g. 192.168.x.x) and bakes it into the QR code, allowing direct local device-to-device communication on the same network.',
+      q: 'Can I use this for remote meetings on Zoom, Google Meet, or Microsoft Teams?',
+      a: 'Absolutely! Just share your browser tab displaying the Projector Screen on Zoom, Teams, or Google Meet. Remote participants scan the QR code on their screen or type the code to vote from home.',
     },
     {
-      q: 'Can I reuse or save templates for recurring team standups or lectures?',
-      a: 'Yes! PulseCast includes built-in multi-question presets for Tech Sprints, Team Retrospectives, Architecture Pulses, and Daily Standups that you can load and customize with one click.',
+      q: 'How fast do the votes show up on screen?',
+      a: 'Instantly! In under 10 milliseconds, each tap on a phone is transmitted to the presenter’s projector screen so everyone watches the bars move together in real-time.',
+    },
+    {
+      q: 'Can I save my polls for recurring team standups or lectures?',
+      a: 'Yes! When you sign in as a host, all your created polls are saved in your dashboard so you can launch them again anytime with a single click.',
     },
   ];
 
@@ -164,7 +173,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
       }}
     >
       {/* 1. HERO SECTION */}
-      <section style={{ marginBottom: isMobile ? '40px' : '60px', width: '100%' }}>
+      <section style={{ marginBottom: isMobile ? '36px' : '56px', width: '100%' }}>
         <div className="landing-hero-grid">
           {/* Left Column: Headline, Actions & Interactive Demo */}
           <div style={{ width: '100%', minWidth: 0 }}>
@@ -177,7 +186,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
-                marginBottom: isMobile ? '14px' : '18px',
+                marginBottom: isMobile ? '12px' : '16px',
                 maxWidth: '100%',
               }}
             >
@@ -187,7 +196,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  fontSize: isMobile ? '0.68rem' : '0.78rem',
+                  fontSize: isMobile ? '0.66rem' : '0.76rem',
                   padding: isMobile ? '3px 8px' : '4px 12px',
                   lineHeight: 1.3,
                   flexWrap: 'wrap',
@@ -204,7 +213,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                     flexShrink: 0,
                   }}
                 />
-                EST. 2026 • LIVE AUDIENCE ENGAGEMENT SYSTEM
+                LIVE AUDIENCE POLLS • LIKE KAHOOT &amp; SLIDO, BUT 100% FREE
               </span>
             </motion.div>
 
@@ -214,7 +223,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
               style={{
-                fontSize: isMobile ? 'clamp(1.75rem, 5.8vw, 2.3rem)' : 'clamp(2.1rem, 4.5vw, 3.4rem)',
+                fontSize: isMobile ? 'clamp(1.8rem, 6vw, 2.4rem)' : 'clamp(2.1rem, 4.5vw, 3.4rem)',
                 lineHeight: 1.15,
                 color: '#2B2B2B',
                 marginBottom: isMobile ? '12px' : '16px',
@@ -223,88 +232,180 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                 wordBreak: 'break-word',
               }}
             >
-              Turn Presentations Into{' '}
+              Ask Questions. Get Live Votes On Screen.{' '}
               <span
                 style={{
                   fontFamily: "'Caveat', cursive",
                   color: '#2563EB',
-                  fontSize: isMobile ? 'clamp(2.1rem, 7vw, 2.9rem)' : 'clamp(2.6rem, 5.2vw, 4.2rem)',
+                  fontSize: isMobile ? 'clamp(2.1rem, 7vw, 3rem)' : 'clamp(2.6rem, 5.2vw, 4.2rem)',
                   display: 'inline-block',
                   transform: 'rotate(-1.5deg)',
                 }}
               >
-                Live Conversations.
+                In Real-Time.
               </span>
             </motion.h1>
 
-            {/* Sub-headline */}
+            {/* Sub-headline in Plain English */}
             <motion.p
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
               style={{
-                fontSize: isMobile ? '0.9rem' : '1.05rem',
+                fontSize: isMobile ? '0.94rem' : '1.08rem',
                 color: '#444444',
                 lineHeight: 1.55,
                 marginBottom: isMobile ? '20px' : '26px',
                 maxWidth: '680px',
               }}
             >
-              PulseCast combines the tactile charm of physical paper ballots with ultra-fast Go + WebSocket live streaming.
-              Connect classrooms, sprint retrospectives, and conferences in seconds with <strong>zero participant app downloads</strong>.
+              PulseCast lets you create instant live polls for classrooms, meetings, and conferences.
+              Display the QR code on your screen, and your audience votes live using their phones — <strong>no app download or sign-up needed for voters</strong>.
             </motion.p>
 
-            {/* Action Buttons */}
+            {/* GET STARTED COMPONENT (Clear dual choice: Attendee vs Host) */}
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
+              transition={{ duration: 0.6, delay: 0.25 }}
+              className="glass-panel"
               style={{
-                display: 'flex',
-                flexDirection: isMobile ? 'column' : 'row',
-                gap: '10px',
-                marginBottom: isMobile ? '22px' : '32px',
+                background: '#FAFAFA',
+                border: '2px solid #2B2B2B',
+                boxShadow: isMobile ? '4px 4px 0px rgba(43, 43, 43, 0.18)' : '6px 6px 0px rgba(43, 43, 43, 0.18)',
+                padding: isMobile ? '16px 14px' : '20px 20px',
+                marginBottom: isMobile ? '22px' : '28px',
                 width: '100%',
+                boxSizing: 'border-box',
               }}
             >
-              <button
-                type="button"
-                onClick={onScrollToAuth}
-                className="btn-primary"
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span
+                    style={{
+                      background: '#2B2B2B',
+                      color: '#FAFAFA',
+                      padding: '3px 8px',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    GET STARTED
+                  </span>
+                  <span style={{ fontSize: '0.8rem', color: '#555555', fontWeight: 600 }}>
+                    What would you like to do right now?
+                  </span>
+                </div>
+              </div>
+
+              {/* Segmented Switcher: Vote vs Host */}
+              <div
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  padding: isMobile ? '12px 18px' : '12px 22px',
-                  fontSize: isMobile ? '0.9rem' : '0.96rem',
-                  width: isMobile ? '100%' : 'auto',
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  background: '#F4F1EA',
+                  border: '1px solid #2B2B2B',
+                  padding: '2px',
+                  marginBottom: '16px',
+                  gap: '2px',
                 }}
               >
-                <Sparkles size={18} />
-                Launch Live Session
-                <ArrowRight size={16} />
-              </button>
-              <a
-                href="#live-demo"
-                className="btn-secondary"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  padding: isMobile ? '11px 16px' : '12px 20px',
-                  fontSize: isMobile ? '0.9rem' : '0.96rem',
-                  textDecoration: 'none',
-                  width: isMobile ? '100%' : 'auto',
-                }}
-              >
-                <BarChart2 size={18} />
-                Try Interactive Demo
-              </a>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('audience')}
+                  style={{
+                    padding: isMobile ? '8px 6px' : '10px 12px',
+                    border: activeTab === 'audience' ? '1px solid #2B2B2B' : 'none',
+                    background: activeTab === 'audience' ? '#2B2B2B' : 'transparent',
+                    color: activeTab === 'audience' ? '#FAFAFA' : '#2B2B2B',
+                    fontWeight: 800,
+                    fontSize: isMobile ? '0.82rem' : '0.88rem',
+                    cursor: 'pointer',
+                    fontFamily: "'Special Elite', monospace",
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <Smartphone size={15} />
+                  <span>I Want to Vote</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('host')}
+                  style={{
+                    padding: isMobile ? '8px 6px' : '10px 12px',
+                    border: activeTab === 'host' ? '1px solid #2B2B2B' : 'none',
+                    background: activeTab === 'host' ? '#2B2B2B' : 'transparent',
+                    color: activeTab === 'host' ? '#FAFAFA' : '#2B2B2B',
+                    fontWeight: 800,
+                    fontSize: isMobile ? '0.82rem' : '0.88rem',
+                    cursor: 'pointer',
+                    fontFamily: "'Special Elite', monospace",
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <PlusCircle size={15} />
+                  <span>I Want to Host</span>
+                </button>
+              </div>
+
+              {/* Tab 1: Audience Voter Quick Join */}
+              {activeTab === 'audience' && (
+                <div>
+                  <p style={{ fontSize: '0.84rem', color: '#555555', marginBottom: '12px', lineHeight: 1.4 }}>
+                    Enter the code or PIN shown on your presenter's screen to join and vote instantly:
+                  </p>
+                  {quickJoinComponent}
+                </div>
+              )}
+
+              {/* Tab 2: Host / Speaker Fast Start */}
+              {activeTab === 'host' && (
+                <div>
+                  <p style={{ fontSize: '0.84rem', color: '#555555', marginBottom: '14px', lineHeight: 1.4 }}>
+                    Presenting to a room, classroom, or webinar? Create your first live poll in 30 seconds:
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={onScrollToAuth}
+                      className="btn-primary"
+                      style={{
+                        padding: '11px 18px',
+                        fontSize: '0.9rem',
+                        justifyContent: 'center',
+                        flex: 1,
+                      }}
+                    >
+                      <Sparkles size={16} />
+                      Sign In &amp; Create Poll
+                      <ArrowRight size={15} />
+                    </button>
+                    <a
+                      href="#live-demo"
+                      className="btn-secondary"
+                      style={{
+                        padding: '11px 16px',
+                        fontSize: '0.9rem',
+                        justifyContent: 'center',
+                        textDecoration: 'none',
+                      }}
+                    >
+                      <BarChart2 size={16} />
+                      Try Demo First
+                    </a>
+                  </div>
+                </div>
+              )}
             </motion.div>
 
-            {/* Real-time Ticker Ribbon */}
+            {/* Real-time Ticker Spec Sheet */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -326,33 +427,26 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}>
                 <Zap size={14} color="#2563EB" flexShrink={0} />
-                <span>&lt; 10ms Sync</span>
+                <span>Instant Live Sync</span>
               </div>
               {!isMobile && <span style={{ color: '#CCCCCC' }}>•</span>}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}>
                 <Smartphone size={14} color="#2B2B2B" flexShrink={0} />
-                <span>Zero Installs</span>
+                <span>Zero App Installs</span>
               </div>
               {!isMobile && <span style={{ color: '#CCCCCC' }}>•</span>}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}>
                 <QrCode size={14} color="#DC2626" flexShrink={0} />
-                <span>LAN QR Connect</span>
+                <span>Camera QR Scan</span>
               </div>
               {!isMobile && <span style={{ color: '#CCCCCC' }}>•</span>}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}>
                 <Trophy size={14} color="#F59E0B" flexShrink={0} />
-                <span>Live Podium</span>
+                <span>Podium &amp; Confetti</span>
               </div>
             </motion.div>
 
-            {/* On Mobile/Tablet: Place Audience Quick Join right here for immediate zero-friction access */}
-            {isNarrow && quickJoinComponent && (
-              <div style={{ marginTop: '22px', width: '100%' }}>
-                {quickJoinComponent}
-              </div>
-            )}
-
-            {/* INTERACTIVE DEMO SIMULATOR */}
+            {/* INTERACTIVE DEMO SIMULATOR (Relatable, fun question!) */}
             <div id="live-demo" style={{ marginTop: isMobile ? '24px' : '36px', width: '100%' }}>
               <motion.div
                 className="glass-panel"
@@ -382,18 +476,18 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <span
                       style={{
-                        background: '#2B2B2B',
-                        color: '#FAFAFA',
+                        background: '#2563EB',
+                        color: '#FFFFFF',
                         padding: '3px 8px',
                         fontSize: '0.7rem',
                         fontWeight: 800,
                         letterSpacing: '0.05em',
                       }}
                     >
-                      INTERACTIVE DEMO
+                      TRY IT RIGHT NOW
                     </span>
-                    <span style={{ fontSize: isMobile ? '0.72rem' : '0.76rem', color: '#666666' }}>
-                      Click any choice to simulate live voting:
+                    <span style={{ fontSize: isMobile ? '0.74rem' : '0.78rem', color: '#555555', fontWeight: 600 }}>
+                      Tap an option below to experience voting live:
                     </span>
                   </div>
                   {hasSimulated && (
@@ -422,23 +516,23 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
 
                 <h3
                   style={{
-                    fontSize: isMobile ? '1.02rem' : '1.16rem',
+                    fontSize: isMobile ? '1.02rem' : '1.18rem',
                     color: '#2B2B2B',
                     marginBottom: '16px',
                     fontFamily: "'Special Elite', monospace",
                     lineHeight: 1.35,
                   }}
                 >
-                  "What capability makes an audience poll most captivating?"
+                  "What's your biggest meeting or lecture pet peeve?"
                 </h3>
 
                 {/* Demo Options */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
                   {[
-                    { key: 'opt1', text: 'Sub-10ms Live Bar Updates on Screen', color: '#2563EB' },
-                    { key: 'opt2', text: 'Instant QR Code Scan (Zero App Install)', color: '#2B2B2B' },
-                    { key: 'opt3', text: 'Live Leaderboard Podium & Winner Confetti', color: '#DC2626' },
-                    { key: 'opt4', text: 'Physical Vintage Ballot Paper Aesthetic', color: '#555555' },
+                    { key: 'opt1', text: 'Meetings that could have easily been an email', color: '#2563EB' },
+                    { key: 'opt2', text: '"Can everyone see my screen?" repeated 3 times', color: '#2B2B2B' },
+                    { key: 'opt3', text: 'Awkward 30-second silence when asking for questions', color: '#DC2626' },
+                    { key: 'opt4', text: 'Someone loudly typing on mechanical keys while unmuted', color: '#555555' },
                   ].map((opt, idx) => {
                     const votes = demoVotes[opt.key];
                     const pct = Math.round((votes / totalDemoVotes) * 100);
@@ -456,7 +550,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                           background: isSelected ? '#DBEAFE' : '#FFFFFF',
                           border: isSelected ? '2px solid #2563EB' : '1px solid #2B2B2B',
                           boxShadow: isSelected ? '3px 3px 0px #2563EB' : '2px 2px 0px rgba(43,43,43,0.15)',
-                          padding: isMobile ? '10px 12px' : '10px 14px',
+                          padding: isMobile ? '10px 12px' : '11px 14px',
                           cursor: 'pointer',
                           position: 'relative',
                           overflow: 'hidden',
@@ -565,20 +659,20 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                     animate={{ opacity: 1, y: 0 }}
                     style={{
                       marginTop: '14px',
-                      padding: isMobile ? '10px 12px' : '8px 12px',
+                      padding: isMobile ? '10px 12px' : '10px 14px',
                       background: 'rgba(37, 99, 235, 0.08)',
                       border: '1px dashed #2563EB',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',
-                      fontSize: isMobile ? '0.76rem' : '0.8rem',
+                      fontSize: isMobile ? '0.78rem' : '0.84rem',
                       color: '#2563EB',
                       lineHeight: 1.4,
                     }}
                   >
-                    <Sparkles size={16} flexShrink={0} />
+                    <Sparkles size={18} flexShrink={0} />
                     <span>
-                      <strong>Instant Sync Simulated:</strong> In an active session, this vote broadcasts to the presenter screen in &lt; 10ms!
+                      <strong>You just voted!</strong> In an active session, this bar moves live on the presenter’s projector screen in under 10 milliseconds!
                     </span>
                   </motion.div>
                 )}
@@ -586,7 +680,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
             </div>
           </div>
 
-          {/* Right Column: Embedded Auth Form & Quick Join (Sticky on Desktop, Stacked on Mobile) */}
+          {/* Right Column: Embedded Host Auth Form (Sticky on Desktop, Stacked on Mobile) */}
           {authComponent && (
             <div
               id="auth-portal-section"
@@ -599,21 +693,16 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
               }}
             >
               {authComponent}
-              {!isNarrow && quickJoinComponent && (
-                <div style={{ marginTop: '20px' }}>
-                  {quickJoinComponent}
-                </div>
-              )}
             </div>
           )}
         </div>
       </section>
 
-      {/* 2. CORE CAPABILITIES (FEATURES GRID) */}
+      {/* 2. CORE CAPABILITIES (FEATURES GRID IN SIMPLE WORDS) */}
       <section style={{ marginBottom: isMobile ? '40px' : '60px', width: '100%' }}>
         <div style={{ textAlign: 'center', marginBottom: isMobile ? '24px' : '32px' }}>
           <div className="stamp-seal" style={{ marginBottom: '10px', fontSize: isMobile ? '0.7rem' : '0.78rem' }}>
-            CAPABILITIES &amp; SPECIFICATIONS
+            WHY USE PULSECAST
           </div>
           <h2
             style={{
@@ -623,7 +712,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
               fontFamily: "'Special Elite', monospace",
             }}
           >
-            Why Presenters Choose PulseCast
+            Everything You Need for Live Engagement
           </h2>
           <p
             style={{
@@ -634,7 +723,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
               padding: '0 8px',
             }}
           >
-            Built for universities, high-growth startups, engineering conferences, and agile teams who demand reliability and tactile elegance.
+            Built for teachers, conference speakers, meeting leaders, and friends who want instant, reliable live polls.
           </p>
         </div>
 
@@ -718,7 +807,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
         </div>
       </section>
 
-      {/* 3. HOW IT WORKS TIMELINE */}
+      {/* 3. HOW IT WORKS TIMELINE (3 CLEAR STEPS) */}
       <section style={{ marginBottom: isMobile ? '40px' : '60px', width: '100%' }}>
         <div
           className="glass-panel"
@@ -733,7 +822,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
         >
           <div style={{ textAlign: 'center', marginBottom: isMobile ? '24px' : '36px' }}>
             <div className="stamp-seal" style={{ marginBottom: '10px', fontSize: isMobile ? '0.7rem' : '0.78rem' }}>
-              THREE SIMPLE STEPS
+              HOW IT WORKS
             </div>
             <h2
               style={{
@@ -742,7 +831,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                 fontFamily: "'Special Elite', monospace",
               }}
             >
-              How a Live Session Runs
+              Run a Live Poll in 3 Simple Steps
             </h2>
           </div>
 
@@ -943,14 +1032,14 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
             lineHeight: 1.4,
           }}
         >
-          <span>PulseCast Live Audience Polling Engine</span>
+          <span>PulseCast • Free Live Audience Polling</span>
           <span>•</span>
-          <span>Go + MongoDB + Redis + WebSockets</span>
+          <span>No App Downloads Required</span>
           <span>•</span>
-          <span>MIT Open License</span>
+          <span>Open Source</span>
         </div>
         <div style={{ fontSize: isMobile ? '0.7rem' : '0.74rem', textAlign: 'center' }}>
-          Designed with tactile vintage ballot paper textures &amp; brutalist 90-degree lines.
+          Designed with distraction-free vintage paper ballot styling &amp; live real-time sync.
         </div>
       </footer>
     </div>

@@ -123,7 +123,7 @@ export default function Header() {
               }}
             >
               <Smartphone size={15} color={location.pathname.startsWith('/vote') ? '#FAFAFA' : '#2B2B2B'} />
-              <span className="nav-btn-text">Join &amp; Vote</span>
+              <span className="nav-btn-text">Enter Code to Vote</span>
             </Link>
 
             {/* Creator link */}
@@ -145,7 +145,7 @@ export default function Header() {
               }}
             >
               <PlusCircle size={15} color={location.pathname === '/' ? '#FAFAFA' : '#2B2B2B'} />
-              <span className="nav-btn-text">{user ? 'Create Poll' : 'Host Portal'}</span>
+              <span className="nav-btn-text">{user ? 'Create Poll' : 'Create a Poll'}</span>
             </Link>
 
             {/* Dynamic link to presenter view */}
@@ -168,7 +168,7 @@ export default function Header() {
                 }}
               >
                 <Presentation size={15} color={location.pathname.startsWith('/present') ? '#FAFAFA' : '#2B2B2B'} />
-                <span className="nav-btn-text">Projector View</span>
+                <span className="nav-btn-text">Presentation Screen</span>
               </Link>
             ) : null}
           </div>

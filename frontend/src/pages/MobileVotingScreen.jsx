@@ -237,11 +237,11 @@ export default function MobileVotingScreen() {
   // If visited /vote directly without an ID parameter
   if (!id) {
     return (
-      <main style={{ maxWidth: '480px', margin: '60px auto', padding: '0 20px', textAlign: 'center' }}>
+      <main style={{ maxWidth: '480px', margin: isMobile ? '30px auto' : '60px auto', padding: '0 20px', textAlign: 'center' }}>
         <div
           className="glass-panel"
           style={{
-            padding: '36px 28px',
+            padding: isMobile ? '26px 20px' : '36px 28px',
             border: '2px solid #2B2B2B',
             boxShadow: '6px 6px 0px rgba(43, 43, 43, 0.2)',
             background: '#FAFAFA',
@@ -250,24 +250,28 @@ export default function MobileVotingScreen() {
           <div className="stamp-seal" style={{ marginBottom: '16px' }}>
             JOIN LIVE POLL
           </div>
-          <h1 style={{ fontSize: '1.8rem', marginBottom: '8px', fontFamily: "'Special Elite', monospace" }}>
-            Participant Sign-In
+          <h1 style={{ fontSize: isMobile ? '1.5rem' : '1.8rem', marginBottom: '8px', fontFamily: "'Special Elite', monospace" }}>
+            Enter Poll Code
           </h1>
-          <p style={{ color: '#555555', fontSize: '0.92rem', marginBottom: '24px' }}>
-            Enter the Session PIN from the presenter's screen to vote in this live poll:
+          <p style={{ color: '#555555', fontSize: isMobile ? '0.86rem' : '0.92rem', marginBottom: '24px', lineHeight: 1.5 }}>
+            Enter the code or PIN shown on your presenter's screen to vote live:
           </p>
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (inputSessionId.trim()) {
-                navigate(`/vote/${inputSessionId.trim()}`);
+              let val = inputSessionId.trim();
+              if (val.includes('/vote/')) {
+                val = val.split('/vote/')[1];
+              }
+              if (val) {
+                navigate(`/vote/${val}`);
               }
             }}
             style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
           >
             <input
               type="text"
-              placeholder="e.g. 6aacb98f5be43c0cbaadccaa"
+              placeholder="e.g. 6a1b2c (or paste link)"
               value={inputSessionId}
               onChange={(e) => setInputSessionId(e.target.value)}
               className="input-field"
@@ -280,7 +284,7 @@ export default function MobileVotingScreen() {
               className="btn-primary"
               style={{ justifyContent: 'center', padding: '12px', fontSize: '1rem' }}
             >
-              Open Poll Session
+              Join &amp; Vote Now
               <ArrowRight size={18} />
             </button>
           </form>
