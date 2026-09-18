@@ -45,7 +45,14 @@ export default function MobileVotingScreen() {
     }
     return '';
   });
-  const [nameSubmitted, setNameSubmitted] = useState(false);
+  const [nameSubmitted, setNameSubmitted] = useState(() => {
+    if (typeof window !== 'undefined' && id) {
+      const savedVotes = localStorage.getItem(`pulsecast_multi_votes_${id}`) || localStorage.getItem(`pulsecast_voted_${id}`);
+      const savedName = localStorage.getItem('pulsecast_voter_name');
+      if (savedVotes && savedName) return true;
+    }
+    return false;
+  });
 
   // Multi-Question Navigation State
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -108,6 +115,7 @@ export default function MobileVotingScreen() {
   const currentQId = currentQ?.id || currentQuestionIndex;
   const currentSelectedOptionId = votedOptions[currentQId];
   const hasVotedCurrent = Boolean(currentSelectedOptionId);
+  const isLocked = Boolean(isCompleted || poll?.status === 'completed');
 
   // Swipe handling
   const handleTouchStart = (e) => {
@@ -334,8 +342,6 @@ export default function MobileVotingScreen() {
   }
 
   // --- 1. Screen Lock when POLL_COMPLETED is received ---
-  const isLocked = isCompleted || poll.status === 'completed';
-
   if (isLocked) {
     return (
       <main

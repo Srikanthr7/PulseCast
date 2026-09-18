@@ -20,6 +20,11 @@ if (normalizedBackend && !/^https?:\/\//i.test(normalizedBackend)) {
   normalizedBackend = `${defaultProto}//${normalizedBackend}`;
 }
 
+const sanitizeWs = (url) => {
+  if (!url) return '';
+  return url.trim().replace(/\/+$/, '').replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:');
+};
+
 export const API_BASE = customApi
   ? customApi
   : normalizedBackend
@@ -29,9 +34,9 @@ export const API_BASE = customApi
       : 'http://localhost:8080/api');
 
 export const WS_URL = customWs
-  ? customWs
+  ? sanitizeWs(customWs)
   : normalizedBackend
-  ? `${normalizedBackend.replace(/^http(s)?:/i, (_, s) => (s ? 'wss:' : 'ws:'))}${normalizedBackend.endsWith('/api') ? '/ws' : '/api/ws'}`
+  ? `${sanitizeWs(normalizedBackend)}${normalizedBackend.endsWith('/api') ? '/ws' : '/api/ws'}`
   : (typeof window !== 'undefined'
       ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${getHost()}:8080/api/ws`
       : 'ws://localhost:8080/api/ws');

@@ -537,3 +537,29 @@ h3 {
   padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px));
   z-index: 40;
 }
+
+/* Google Auth Responsive Container */
+#google-signin-btn-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  overflow: hidden !important;
+  min-height: 44px;
+}
+
+#google-signin-btn-container > div,
+#google-signin-btn-container iframe {
+  max-width: 100% !important;
+  margin: 0 auto !important;
+  border-radius: 10px !important;
+}
+
+@media (max-width: 480px) {
+  #google-signin-btn-container iframe {
+    width: 100% !important;
+    transform: scale(0.96);
+    transform-origin: center center;
+  }
+}

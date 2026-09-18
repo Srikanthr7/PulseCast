@@ -169,7 +169,7 @@ export default function CreatorDashboard() {
     if (currentUser) return;
 
     let intervalId = null;
-    const initGoogle = () => {
+    const renderGoogleBtn = () => {
       if (window.google?.accounts?.id && googleClientId) {
         try {
           window.google.accounts.id.initialize({
@@ -181,10 +181,13 @@ export default function CreatorDashboard() {
           const btnEl = document.getElementById('google-signin-btn-container');
           if (btnEl) {
             btnEl.innerHTML = '';
+            // Determine button width dynamically based on viewport/container so it NEVER overflows mobile screens
+            const containerWidth = btnEl.parentElement?.clientWidth || window.innerWidth || 360;
+            const targetWidth = Math.min(Math.max(Math.floor(containerWidth - 16), 220), 380);
             window.google.accounts.id.renderButton(btnEl, {
               theme: 'outline',
               size: 'large',
-              width: 360,
+              width: targetWidth,
               text: 'continue_with',
               shape: 'rectangular',
               logo_alignment: 'left',
@@ -197,16 +200,22 @@ export default function CreatorDashboard() {
       }
     };
 
-    initGoogle();
+    renderGoogleBtn();
     if (!window.google?.accounts?.id && googleClientId) {
-      intervalId = setInterval(initGoogle, 300);
+      intervalId = setInterval(renderGoogleBtn, 300);
       setTimeout(() => {
         if (intervalId) clearInterval(intervalId);
       }, 5000);
     }
 
+    const handleResize = () => {
+      renderGoogleBtn();
+    };
+    window.addEventListener('resize', handleResize);
+
     return () => {
       if (intervalId) clearInterval(intervalId);
+      window.removeEventListener('resize', handleResize);
     };
   }, [currentUser, googleClientId, authMode]);
 
@@ -609,6 +618,9 @@ export default function CreatorDashboard() {
       localStorage.setItem('pulsecast_latest_poll_id', pollId);
 
       loadMyPolls();
+
+      // Reset builder form so that returning to dashboard gives a clean blank session
+      handleResetForm();
 
       // Navigate to presentation view
       navigate(`/present/${pollId}`);
@@ -1050,11 +1062,23 @@ export default function CreatorDashboard() {
               <Copy size={15} />
               {copiedPollId === createdPoll.id ? 'Copied Link!' : 'Copy Audience Link'}
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCreatedPoll(null);
+                handleResetForm();
+              }}
+              className="btn-secondary"
+              style={{ gap: '6px', padding: '9px 14px', fontSize: '0.88rem', color: 'var(--accent-primary)', borderColor: 'rgba(72, 229, 194, 0.35)' }}
+            >
+              <Plus size={15} />
+              Start New Polling Session
+            </button>
           </div>
         </div>
       )}
 
-      {/* Quick Polling Templates */}
+      {/* Quick Polling Templates & Clear Toolbar */}
       <div
         style={{
           display: 'flex',
@@ -1112,15 +1136,74 @@ export default function CreatorDashboard() {
             </button>
           );
         })}
+
+        {/* Clear Preset / Reset Session Button */}
+        {(Boolean(pollTitle) || questions.some((q) => q.title.trim() || q.options.some((o) => o.text.trim()))) && (
+          <button
+            type="button"
+            onClick={handleResetForm}
+            className="btn-secondary"
+            style={{
+              fontSize: '0.8rem',
+              padding: '6px 12px',
+              borderRadius: '10px',
+              color: '#f87171',
+              borderColor: 'rgba(248, 113, 113, 0.4)',
+              background: 'rgba(248, 113, 113, 0.1)',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+            }}
+            title="Clear preset data and reset to a clean blank session"
+          >
+            <RotateCcw size={13} />
+            <span>Clear Preset</span>
+          </button>
+        )}
+
+        {/* New Blank Session Button */}
+        <button
+          type="button"
+          onClick={handleResetForm}
+          className="btn-secondary"
+          style={{
+            fontSize: '0.8rem',
+            padding: '6px 12px',
+            borderRadius: '10px',
+            gap: '5px',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
+          }}
+          title="Start fresh with an empty blank polling session"
+        >
+          <Plus size={13} />
+          <span>New Blank Session</span>
+        </button>
       </div>
 
       {/* Main Multi-Question Poll Form */}
       <form onSubmit={(e) => e.preventDefault()} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {/* Session / Poll Title Card */}
         <div className="glass-panel" style={{ padding: isMobile ? '18px 16px' : '24px' }}>
-          <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 700, marginBottom: '8px', color: 'var(--text-primary)' }}>
-            Session Title
-          </label>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Session Title
+            </label>
+            <button
+              type="button"
+              onClick={handleResetForm}
+              className="btn-secondary"
+              style={{ padding: '3px 8px', fontSize: '0.72rem', gap: '4px' }}
+              title="Reset entire form"
+            >
+              <RotateCcw size={11} />
+              Reset
+            </button>
+          </div>
           <input
             type="text"
             className="input-field"
