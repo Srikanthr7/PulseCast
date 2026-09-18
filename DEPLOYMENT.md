@@ -101,11 +101,11 @@ Vercel provides ultra-fast CDN edges for Vite React apps.
    - **Root Directory**: Click `Edit` and select `frontend`.
    - **Framework Preset**: Vite
    - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
 4. Expand **Environment Variables** and add:
+   - `VITE_BACKEND_URL`: `https://pulsecast-backend.onrender.com`
    - `VITE_API_URL`: `https://pulsecast-backend.onrender.com/api`
    - `VITE_WS_URL`: `wss://pulsecast-backend.onrender.com/api/ws`
-5. Click **Deploy**.
+5. Click **Deploy**. *(The included `vercel.json` automatically handles SPA rewrites so direct links like `/vote/:id` work without 404 errors)*.
 
 ---
 

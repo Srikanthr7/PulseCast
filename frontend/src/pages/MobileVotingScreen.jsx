@@ -28,7 +28,7 @@ export default function MobileVotingScreen() {
   const { poll, isCompleted, loading, error, isConnected } = useLivePoll(id);
   const [inputSessionId, setInputSessionId] = useState('');
 
-  // Audience Name Capture State
+  // Audience Name Capture State - Always require name to be entered/confirmed first when opening QR link
   const [voterName, setVoterName] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('pulsecast_voter_name') || '';
@@ -41,12 +41,7 @@ export default function MobileVotingScreen() {
     }
     return '';
   });
-  const [nameSubmitted, setNameSubmitted] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return Boolean(localStorage.getItem('pulsecast_voter_name'));
-    }
-    return false;
-  });
+  const [nameSubmitted, setNameSubmitted] = useState(false);
 
   // Multi-Question Navigation State
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -469,8 +464,27 @@ export default function MobileVotingScreen() {
             <h1 style={{ fontSize: '1.9rem', marginBottom: '8px', letterSpacing: '-0.03em' }}>
               Welcome to the <span className="gradient-text">Live Poll</span>
             </h1>
+            {poll && (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 14px',
+                  borderRadius: '999px',
+                  background: 'rgba(72, 229, 194, 0.1)',
+                  border: '1px solid rgba(72, 229, 194, 0.3)',
+                  color: 'var(--accent-cyan)',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  marginBottom: '10px',
+                }}
+              >
+                Session: {poll.title || poll.question || 'Live Interactive Poll'}
+              </div>
+            )}
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.5 }}>
-              Enter your name or handle so you appear on the live presentation leaderboard.
+              Please enter your name to join this session and vote live:
             </p>
           </div>
 
