@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"time"
 
@@ -41,6 +42,13 @@ func StartRedisSubscriber(ctx context.Context) {
 
 				ch := pubsub.Channel()
 				for msg := range ch {
+					// Check if message originated from this instance; if so, skip to avoid double-broadcast
+					var eventMap map[string]interface{}
+					if err := json.Unmarshal([]byte(msg.Payload), &eventMap); err == nil {
+						if sender, ok := eventMap["sender_instance"].(string); ok && sender == InstanceID {
+							continue
+						}
+					}
 					// Broadcast exact message from Redis to every connected WebSocket client
 					GlobalHub.Broadcast([]byte(msg.Payload))
 				}

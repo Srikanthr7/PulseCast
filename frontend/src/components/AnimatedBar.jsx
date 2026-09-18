@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Trophy } from 'lucide-react';
 
 export default function AnimatedBar({
   option,
@@ -11,9 +10,8 @@ export default function AnimatedBar({
   const percentage = totalVotes > 0 ? Math.round((option.votes / totalVotes) * 100) : 0;
   const isWinning = isLeader && totalVotes > 0;
 
-  // Bespoke Color Styling: Winning bar is Turquoise (#48E5C2), runner-ups are Charcoal (#5E5E5E)
-  const barColor = isWinning ? '#48E5C2' : '#5E5E5E';
-  const barBg = isWinning ? 'rgba(72, 229, 194, 0.12)' : '#444444';
+  // Vintage Tactile Paper: Standard bars are Ink Black (#2B2B2B), winning bar is Red Stamp (#DC2626)
+  const mainColor = isWinning ? '#DC2626' : '#2B2B2B';
 
   return (
     <div
@@ -22,25 +20,26 @@ export default function AnimatedBar({
         flexDirection: 'column',
         gap: '8px',
         padding: '18px 22px',
-        borderRadius: '16px',
-        background: isWinning ? 'rgba(72, 229, 194, 0.08)' : 'rgba(255, 255, 255, 0.03)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        border: isWinning ? '1px solid rgba(72, 229, 194, 0.5)' : '1px solid rgba(255, 255, 255, 0.08)',
+        borderRadius: '0px',
+        background: '#FAFAFA',
+        border: isWinning ? '2px solid #DC2626' : '1px solid #2B2B2B',
         position: 'relative',
         overflow: 'hidden',
-        transition: 'border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease',
-        boxShadow: isWinning ? '0 0 25px rgba(72, 229, 194, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)' : '0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+        boxShadow: isWinning
+          ? '6px 6px 0px rgba(220, 38, 38, 0.25)'
+          : '6px 6px 0px rgba(43, 43, 43, 0.15)',
+        fontFamily: "'Special Elite', monospace",
+        transition: 'all 0.2s ease',
       }}
     >
-      {/* Background Animated Progress Fill */}
+      {/* Background Animated Progress Fill - Stark Rectangles */}
       <motion.div
         initial={{ width: 0 }}
         animate={{ width: `${percentage}%` }}
         transition={{
           type: 'spring',
-          stiffness: 100,
-          damping: 18,
+          stiffness: 90,
+          damping: 16,
           restDelta: 0.001,
         }}
         style={{
@@ -49,10 +48,11 @@ export default function AnimatedBar({
           left: 0,
           bottom: 0,
           background: isWinning
-            ? 'linear-gradient(90deg, rgba(72, 229, 194, 0.15) 0%, rgba(72, 229, 194, 0.38) 100%)'
-            : 'linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.07) 100%)',
-          borderRight: isWinning ? '3px solid #48E5C2' : '2px solid rgba(255, 255, 255, 0.2)',
+            ? 'rgba(220, 38, 38, 0.18)'
+            : 'rgba(43, 43, 43, 0.12)',
+          borderRight: isWinning ? '4px solid #DC2626' : '4px solid #2B2B2B',
           zIndex: 0,
+          borderRadius: 0,
         }}
       />
 
@@ -62,81 +62,86 @@ export default function AnimatedBar({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '10px',
           position: 'relative',
           zIndex: 1,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', flex: 1, minWidth: '180px' }}>
+          {/* Stark 90-degree Option Letter Block */}
           <span
             style={{
               width: '32px',
               height: '32px',
-              borderRadius: '8px',
+              borderRadius: '0px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '0.88rem',
+              fontSize: '0.92rem',
               fontWeight: 800,
-              background: isWinning ? '#48E5C2' : 'rgba(255, 255, 255, 0.06)',
-              color: isWinning ? '#000000' : '#F8FAFC',
-              boxShadow: isWinning ? '0 0 12px rgba(72, 229, 194, 0.5)' : 'none',
-              border: isWinning ? 'none' : '1px solid rgba(255, 255, 255, 0.12)',
+              background: isWinning ? '#DC2626' : '#2B2B2B',
+              color: '#FAFAFA',
+              border: '1px solid #1A1A1A',
+              boxShadow: '2px 2px 0px rgba(43, 43, 43, 0.2)',
+              fontFamily: "'Special Elite', monospace",
+              flexShrink: 0,
             }}
           >
             {String.fromCharCode(65 + index)}
           </span>
+
           <span
             style={{
-              fontSize: '1.15rem',
-              fontWeight: 600,
-              color: '#FCFAF9',
-              letterSpacing: '-0.01em',
-              fontFamily: 'var(--font-heading)',
+              fontSize: '1.05rem',
+              fontWeight: 700,
+              color: '#2B2B2B',
+              letterSpacing: '0.01em',
+              fontFamily: "'Special Elite', monospace",
+              wordBreak: 'break-word',
+              lineHeight: 1.3,
             }}
           >
             {option.text}
           </span>
+
+          {/* Official Red Stamp Seal for Top Choice */}
           {isWinning && (
             <motion.span
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
+              initial={{ scale: 0.8, rotate: -6 }}
+              animate={{ scale: 1, rotate: -2 }}
+              className="stamp-seal"
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '3px 10px',
-                borderRadius: 'var(--radius-full)',
-                background: 'rgba(243, 211, 189, 0.2)',
-                border: '1px solid #F3D3BD',
-                color: '#F3D3BD',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
+                fontSize: '0.72rem',
+                padding: '2px 8px',
+                border: '2px solid #DC2626',
+                color: '#DC2626',
+                background: 'rgba(220, 38, 38, 0.08)',
+                letterSpacing: '0.08em',
+                flexShrink: 0,
               }}
             >
-              <Trophy size={12} />
-              Highest Voted
+              ★ TOP CHOICE ★
             </motion.span>
           )}
         </div>
 
         {/* Stats: Percentage & Votes Count */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexShrink: 0, marginLeft: 'auto' }}>
           <motion.span
             key={`count-${option.votes}`}
-            initial={{ scale: 1.2, color: barColor }}
-            animate={{ scale: 1, color: isWinning ? '#48E5C2' : '#FCFAF9' }}
-            transition={{ duration: 0.3 }}
+            initial={{ scale: 1.15, color: mainColor }}
+            animate={{ scale: 1, color: isWinning ? '#DC2626' : '#2B2B2B' }}
+            transition={{ duration: 0.25 }}
             style={{
-              fontSize: '1.45rem',
+              fontSize: '1.35rem',
               fontWeight: 800,
-              fontFamily: 'var(--font-heading)',
+              fontFamily: "'Special Elite', monospace",
             }}
           >
             {percentage}%
           </motion.span>
-          <span style={{ fontSize: '0.9rem', color: 'rgba(252, 250, 249, 0.65)', fontWeight: 500 }}>
+          <span style={{ fontSize: '0.84rem', color: '#555555', fontWeight: 600 }}>
             ({option.votes} {option.votes === 1 ? 'vote' : 'votes'})
           </span>
         </div>

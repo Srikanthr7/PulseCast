@@ -1,13 +1,18 @@
 package ws
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
+
+// InstanceID uniquely identifies this backend process instance.
+var InstanceID = fmt.Sprintf("node-%d-%d", time.Now().UnixNano(), os.Getpid())
 
 // Upgrader handles upgrading standard HTTP connections to WebSocket protocol with CORS allowance.
 var Upgrader = websocket.Upgrader{

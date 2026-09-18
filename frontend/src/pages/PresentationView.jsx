@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -13,12 +13,9 @@ import {
   BarChart2,
   ChevronLeft,
   ChevronRight,
-  HelpCircle,
   Flag,
   LogOut,
   Globe,
-  Smartphone,
-  Activity,
   Hash,
   Copy,
   QrCode,
@@ -26,14 +23,15 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useLivePoll } from '../hooks/useLivePoll';
-import { completePoll, updatePollStatus } from '../api';
+import { completePoll, updatePollStatus, getNetworkIP } from '../api';
 import { useDeviceType } from '../hooks/useDeviceType';
 import AnimatedBar from '../components/AnimatedBar';
 import Leaderboard from '../components/Leaderboard';
+import TypewriterText from '../components/TypewriterText';
 
 export default function PresentationView() {
   const { id } = useParams();
-  const { isMobile, isLaptop } = useDeviceType();
+  const { isMobile, isTablet, isLaptop } = useDeviceType();
   const { poll, isCompleted, voterNames, loading, error, isConnected, refetch } = useLivePoll(id);
   const [copied, setCopied] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
@@ -41,12 +39,32 @@ export default function PresentationView() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(0);
   const [showMobileQRModal, setShowMobileQRModal] = useState(false);
+  const [lanIp, setLanIp] = useState('');
+  const hasAutoSwitchedRef = useRef(false);
 
-  // Compute the scannable vote URL directly from window.location.origin
-  // No Wi-Fi restrictions — participants join from any internet connection anywhere in the world
-  const voteUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/vote/${id}`
-    : `http://localhost:5173/vote/${id}`;
+  // Fetch outbound LAN IP so phone can connect when scanning QR on localhost
+  useEffect(() => {
+    let isMounted = true;
+    getNetworkIP().then((ip) => {
+      if (isMounted && ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+        setLanIp(ip);
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, []);
+
+  // Compute the scannable vote URL directly from window.location.origin,
+  // or swap localhost for the actual LAN IP for mobile phone scanners
+  const voteUrl = (() => {
+    if (typeof window === 'undefined') return `http://localhost:5173/vote/${id}`;
+    const hostname = window.location.hostname;
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+    if (isLocalhost && lanIp) {
+      const port = window.location.port ? `:${window.location.port}` : '';
+      return `${window.location.protocol}//${lanIp}${port}/vote/${id}`;
+    }
+    return `${window.location.origin}/vote/${id}`;
+  })();
 
   const handleCopyId = () => {
     if (navigator.clipboard && id) {
@@ -56,9 +74,10 @@ export default function PresentationView() {
     }
   };
 
-  // Automatically switch to leaderboard when status is completed or isCompleted WebSocket event arrives
+  // Automatically switch to leaderboard once when status transitions to completed
   useEffect(() => {
-    if (isCompleted || (poll && poll.status === 'completed')) {
+    if ((isCompleted || poll?.status === 'completed') && !hasAutoSwitchedRef.current) {
+      hasAutoSwitchedRef.current = true;
       setViewMode('leaderboard');
     }
   }, [isCompleted, poll?.status]);
@@ -71,7 +90,6 @@ export default function PresentationView() {
     }
   };
 
-  // Wire up the green "Complete Poll & Show Leaderboard" button to POST /api/polls/:id/complete
   const handleCompletePoll = async () => {
     if (!id || isUpdatingStatus) return;
     setIsUpdatingStatus(true);
@@ -80,10 +98,10 @@ export default function PresentationView() {
       setViewMode('leaderboard');
       try {
         confetti({
-          particleCount: 120,
+          particleCount: 110,
           spread: 80,
           origin: { y: 0.5 },
-          colors: ['#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#ec4899'],
+          colors: ['#DC2626', '#2563EB', '#2B2B2B', '#EBE7DD'],
         });
       } catch (e) {
         // ignore
@@ -111,9 +129,11 @@ export default function PresentationView() {
   if (loading && !poll) {
     return (
       <div style={{ textAlign: 'center', padding: '120px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-        <RefreshCw size={36} className="animate-spin" color="var(--accent-primary)" />
-        <h2 style={{ fontSize: '1.5rem' }}>Loading live poll from MongoDB...</h2>
-        <p style={{ color: 'var(--text-secondary)' }}>Connecting to Go backend on port 8080</p>
+        <RefreshCw size={36} className="animate-spin" color="#2B2B2B" />
+        <h2 style={{ fontSize: '1.5rem', fontFamily: "'Special Elite', monospace" }}>
+          Loading live poll presentation...
+        </h2>
+        <p style={{ color: '#555555' }}>Connecting to session database</p>
       </div>
     );
   }
@@ -121,31 +141,42 @@ export default function PresentationView() {
   if (error || !poll) {
     return (
       <div style={{ textAlign: 'center', padding: '100px 20px', maxWidth: '500px', margin: '0 auto' }}>
-        <div style={{
-          width: '56px',
-          height: '56px',
-          borderRadius: '50%',
-          background: 'rgba(239, 68, 68, 0.15)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto 16px',
-          color: '#ef4444',
-        }}>
-          <AlertCircle size={32} />
-        </div>
-        <h2 style={{ fontSize: '1.8rem', marginBottom: '8px' }}>Poll Not Found</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>
-          {error || `Poll with ID ${id} was not found in MongoDB.`}
-        </p>
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-          <button onClick={refetch} className="btn-secondary" style={{ gap: '8px' }}>
-            <RefreshCw size={16} />
-            Retry
-          </button>
-          <Link to="/" className="btn-primary">
-            Create New Poll
-          </Link>
+        <div
+          className="glass-panel"
+          style={{
+            padding: '36px 28px',
+            border: '2px solid #2B2B2B',
+            boxShadow: '6px 6px 0px rgba(43, 43, 43, 0.2)',
+          }}
+        >
+          <div style={{
+            width: '56px',
+            height: '56px',
+            background: 'rgba(220, 38, 38, 0.1)',
+            border: '1px solid #DC2626',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 16px',
+            color: '#DC2626',
+          }}>
+            <AlertCircle size={32} />
+          </div>
+          <h2 style={{ fontSize: '1.8rem', marginBottom: '8px', fontFamily: "'Special Elite', monospace" }}>
+            Session Not Found
+          </h2>
+          <p style={{ color: '#555555', marginBottom: '24px' }}>
+            {error || `Poll session with ID ${id} was not found.`}
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button onClick={refetch} className="btn-secondary" style={{ gap: '8px' }}>
+              <RefreshCw size={16} />
+              Retry
+            </button>
+            <Link to="/" className="btn-primary">
+              Create New Poll
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -169,7 +200,6 @@ export default function PresentationView() {
   const currentQVotes = currentOptions.reduce((sum, opt) => sum + (opt.votes || 0), 0);
   const highestVotes = Math.max(...currentOptions.map((o) => o.votes || 0), 0);
 
-  // Total session votes across all questions
   const totalSessionVotes = questionsList.reduce(
     (acc, q) => acc + (q.options?.reduce((s, o) => s + (o.votes || 0), 0) || 0),
     0
@@ -190,7 +220,7 @@ export default function PresentationView() {
         paddingBottom: isMobile ? 'calc(84px + var(--safe-bottom))' : '36px',
       }}
     >
-      {/* Presentation Top Banner / Bar */}
+      {/* Presentation Top Physical Paper Banner */}
       <div
         style={{
           display: 'flex',
@@ -198,7 +228,7 @@ export default function PresentationView() {
           justifyContent: 'space-between',
           marginBottom: isMobile ? '16px' : '28px',
           paddingBottom: '16px',
-          borderBottom: '1px solid var(--border-subtle)',
+          borderBottom: '2px dashed #2B2B2B',
           flexWrap: 'wrap',
           gap: isMobile ? '10px' : '16px',
         }}
@@ -206,51 +236,48 @@ export default function PresentationView() {
         <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '16px', flexWrap: 'wrap' }}>
           {/* Status Badge */}
           {pollIsConcluded ? (
-            <div className="live-badge" style={{ background: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#fca5a5' }}>
-              <Trophy size={14} color="#f59e0b" />
-              {isMobile ? 'CONCLUDED' : 'POLL CONCLUDED • FINAL LEADERBOARD'}
+            <div className="stamp-seal">
+              ★ POLL CONCLUDED ★
             </div>
           ) : isConnected ? (
-            <div className="live-badge" style={{ background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.4)', color: '#34d399' }}>
-              <span className="live-dot" style={{ backgroundColor: '#10b981', boxShadow: '0 0 8px #10b981' }} />
-              {isMobile ? 'LIVE' : 'LIVE • REDIS REALTIME'}
+            <div className="live-badge">
+              <span className="live-dot" />
+              {isMobile ? 'LIVE' : 'LIVE POLL • REAL-TIME RESPONSES'}
             </div>
           ) : (
-            <div className="live-badge" style={{ background: 'rgba(245, 158, 11, 0.15)', borderColor: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' }}>
+            <div className="live-badge">
               <RefreshCw size={12} className="animate-spin" />
-              {isMobile ? 'RECONNECTING...' : 'RECONNECTING TO WEBSOCKET...'}
+              {isMobile ? 'RECONNECTING' : 'RECONNECTING TO LIVE STREAM...'}
             </div>
           )}
 
           {/* View Switcher Tabs */}
           <div style={{
             display: 'inline-flex',
-            background: 'rgba(0, 0, 0, 0.4)',
-            borderRadius: '12px',
-            padding: '4px',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            gap: '4px',
+            background: '#FAFAFA',
+            border: '1px solid #2B2B2B',
+            boxShadow: '3px 3px 0px rgba(43, 43, 43, 0.15)',
+            padding: '2px',
+            gap: '2px',
           }}>
             <button
               type="button"
               onClick={() => setViewMode('live')}
               style={{
                 padding: isMobile ? '6px 10px' : '6px 14px',
-                borderRadius: '8px',
-                border: 'none',
-                background: viewMode === 'live' ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'transparent',
-                color: viewMode === 'live' ? '#000000' : 'var(--text-secondary)',
+                border: viewMode === 'live' ? '1px solid #2B2B2B' : 'none',
+                background: viewMode === 'live' ? '#2B2B2B' : 'transparent',
+                color: viewMode === 'live' ? '#FAFAFA' : '#2B2B2B',
                 fontSize: isMobile ? '0.78rem' : '0.85rem',
-                fontWeight: viewMode === 'live' ? 700 : 500,
+                fontWeight: 700,
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                boxShadow: viewMode === 'live' ? '0 2px 10px rgba(72, 229, 194, 0.35)' : 'none',
-                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                fontFamily: "'Special Elite', monospace",
               }}
             >
-              <BarChart2 size={14} color={viewMode === 'live' ? '#000000' : 'currentColor'} />
+              <BarChart2 size={14} color={viewMode === 'live' ? '#FAFAFA' : 'currentColor'} />
               {isMobile ? 'Chart' : 'Live Chart'}
             </button>
             <button
@@ -258,27 +285,25 @@ export default function PresentationView() {
               onClick={() => setViewMode('leaderboard')}
               style={{
                 padding: isMobile ? '6px 10px' : '6px 14px',
-                borderRadius: '8px',
-                border: 'none',
-                background: viewMode === 'leaderboard' ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'transparent',
-                color: viewMode === 'leaderboard' ? '#000000' : 'var(--text-secondary)',
+                border: viewMode === 'leaderboard' ? '1px solid #2B2B2B' : 'none',
+                background: viewMode === 'leaderboard' ? '#2B2B2B' : 'transparent',
+                color: viewMode === 'leaderboard' ? '#FAFAFA' : '#2B2B2B',
                 fontSize: isMobile ? '0.78rem' : '0.85rem',
-                fontWeight: viewMode === 'leaderboard' ? 700 : 500,
+                fontWeight: 700,
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                boxShadow: viewMode === 'leaderboard' ? '0 2px 10px rgba(72, 229, 194, 0.35)' : 'none',
-                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                fontFamily: "'Special Elite', monospace",
               }}
             >
-              <Trophy size={14} color={viewMode === 'leaderboard' ? '#000000' : '#f59e0b'} />
-              {isMobile ? `Ranks (${voterNames.length || poll.voters?.length || 0})` : `Leaderboard & Voters (${voterNames.length || poll.voters?.length || 0})`}
+              <Trophy size={14} color={viewMode === 'leaderboard' ? '#FAFAFA' : '#DC2626'} />
+              {isMobile ? `Roster (${voterNames.length || poll.voters?.length || 0})` : `Participant Guestbook (${voterNames.length || poll.voters?.length || 0})`}
             </button>
           </div>
 
-          <span style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.8rem' : '0.9rem' }}>
-            ID: <strong style={{ color: 'var(--text-primary)' }}>{poll.id}</strong>
+          <span style={{ color: '#555555', fontSize: isMobile ? '0.8rem' : '0.9rem', fontFamily: 'monospace' }}>
+            ID: <strong style={{ color: '#2B2B2B' }}>{poll.id}</strong>
           </span>
         </div>
 
@@ -290,48 +315,46 @@ export default function PresentationView() {
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              background: 'rgba(255, 255, 255, 0.05)',
+              background: '#FAFAFA',
               padding: isMobile ? '6px 12px' : '8px 16px',
-              borderRadius: 'var(--radius-full)',
-              border: '1px solid var(--border-subtle)',
+              border: '1px solid #2B2B2B',
+              boxShadow: '4px 4px 0px rgba(43, 43, 43, 0.15)',
+              color: '#2B2B2B',
+              fontFamily: "'Special Elite', monospace",
             }}
           >
-            <Users size={14} color="var(--accent-cyan)" />
-            <span style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 600 }}>
+            <Users size={14} color="#2B2B2B" />
+            <span style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 700 }}>
               <motion.span
                 key={totalSessionVotes}
-                initial={{ scale: 1.3, color: '#06b6d4' }}
-                animate={{ scale: 1, color: '#ffffff' }}
-                transition={{ duration: 0.3 }}
+                initial={{ scale: 1.25, color: '#DC2626' }}
+                animate={{ scale: 1, color: '#2B2B2B' }}
+                transition={{ duration: 0.25 }}
               >
                 {totalSessionVotes}
               </motion.span>{' '}
-              {totalSessionVotes === 1 ? 'Vote' : 'Votes'}
+              {totalSessionVotes === 1 ? 'Vote Cast' : 'Votes Cast'}
             </span>
           </div>
 
-          {/* Finish Poll & Show Leaderboard Button (Laptop only in header) */}
+          {/* Finish Poll & Show Leaderboard Button */}
           {!isMobile && (
             !pollIsConcluded ? (
               <button
                 type="button"
                 onClick={handleCompletePoll}
                 disabled={isUpdatingStatus}
-                className="btn-primary"
+                className="btn-stamp"
                 style={{
-                  background: '#48E5C2',
-                  color: '#000000',
-                  padding: '10px 22px',
-                  fontSize: '0.92rem',
+                  padding: '10px 20px',
+                  fontSize: '0.88rem',
                   fontWeight: 800,
                   gap: '8px',
-                  borderRadius: '16px',
-                  boxShadow: '0 4px 16px rgba(72, 229, 194, 0.4)',
                   cursor: 'pointer',
                 }}
               >
-                <Flag size={16} color="#000000" />
-                Finish Poll &amp; Show Leaderboard
+                <Flag size={16} color="#FFFFFF" />
+                Conclude Poll &amp; Show Leaderboard
               </button>
             ) : (
               <button
@@ -355,7 +378,7 @@ export default function PresentationView() {
             type="button"
             onClick={refetch}
             className="btn-secondary"
-            title="Refresh poll data from MongoDB"
+            title="Refresh poll data from database"
             style={{ padding: isMobile ? '6px 10px' : '8px 12px', fontSize: '0.85rem' }}
           >
             <RefreshCw size={14} />
@@ -369,10 +392,9 @@ export default function PresentationView() {
               padding: isMobile ? '6px 10px' : '8px 14px',
               fontSize: '0.85rem',
               gap: '6px',
-              color: '#f87171',
-              borderColor: 'rgba(239, 68, 68, 0.4)',
-              background: 'rgba(239, 68, 68, 0.08)',
-              fontWeight: 600,
+              color: '#DC2626',
+              borderColor: '#DC2626',
+              fontWeight: 700,
             }}
             title="Exit presentation and return to dashboard"
           >
@@ -382,9 +404,9 @@ export default function PresentationView() {
         </div>
       </div>
 
-      {/* Main View Mode Content: Toggle between LiveChart and Leaderboard Component */}
+      {/* Main View Mode Content */}
       <AnimatePresence mode="wait">
-        {viewMode === 'live' && !pollIsConcluded ? (
+        {viewMode === 'live' ? (
           isMobile ? (
             /* Mobile Presenter Remote Layout */
             <motion.div
@@ -394,37 +416,37 @@ export default function PresentationView() {
               exit={{ opacity: 0, y: -10 }}
               style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}
             >
-              {/* Quick QR & Direct Join Card on Mobile */}
+              {/* Quick QR Card on Mobile */}
               <div
+                className="glass-panel"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '12px 16px',
-                  borderRadius: '16px',
-                  background: 'rgba(72, 229, 194, 0.08)',
-                  border: '1px solid rgba(72, 229, 194, 0.25)',
+                  background: '#FAFAFA',
+                  border: '1px solid #2B2B2B',
+                  boxShadow: '4px 4px 0px rgba(43, 43, 43, 0.15)',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <div style={{
                     width: '38px',
                     height: '38px',
-                    borderRadius: '10px',
-                    background: 'rgba(72, 229, 194, 0.15)',
+                    background: '#2B2B2B',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: 'var(--accent-primary)',
+                    color: '#FAFAFA',
                   }}>
                     <QrCode size={20} />
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#2B2B2B', fontFamily: 'monospace' }}>
                       PIN: {id}
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                      Tap to open QR code scanner
+                    <div style={{ fontSize: '0.74rem', color: '#555555' }}>
+                      Tap to display QR Code for participants
                     </div>
                   </div>
                 </div>
@@ -447,33 +469,36 @@ export default function PresentationView() {
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '14px',
+                  background: '#FAFAFA',
+                  border: '2px solid #2B2B2B',
+                  boxShadow: '6px 6px 0px rgba(43, 43, 43, 0.15)',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                   <span
                     style={{
-                      fontSize: '0.78rem',
-                      color: 'var(--accent-primary)',
-                      fontWeight: 700,
+                      fontSize: '0.8rem',
+                      color: '#2B2B2B',
+                      fontWeight: 800,
                       textTransform: 'uppercase',
                       letterSpacing: '0.08em',
+                      borderBottom: '1px dashed #2B2B2B',
+                      paddingBottom: '2px',
                     }}
                   >
                     Question {currentQIdx + 1} of {questionsList.length}
                   </span>
 
                   {questionsList.length > 1 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <button
                         type="button"
                         disabled={currentQIdx === 0}
                         onClick={() => setActiveQuestionIdx((prev) => Math.max(0, prev - 1))}
                         className="btn-secondary"
                         style={{
-                          padding: '8px 12px',
+                          padding: '6px 10px',
                           opacity: currentQIdx === 0 ? 0.3 : 1,
-                          minHeight: '38px',
-                          minWidth: '38px',
                         }}
                         title="Previous Question"
                       >
@@ -485,10 +510,8 @@ export default function PresentationView() {
                         onClick={() => setActiveQuestionIdx((prev) => Math.min(questionsList.length - 1, prev + 1))}
                         className="btn-secondary"
                         style={{
-                          padding: '8px 12px',
+                          padding: '6px 10px',
                           opacity: currentQIdx === questionsList.length - 1 ? 0.3 : 1,
-                          minHeight: '38px',
-                          minWidth: '38px',
                         }}
                         title="Next Question"
                       >
@@ -498,19 +521,48 @@ export default function PresentationView() {
                   )}
                 </div>
 
-                <h2
+                {/* Direct question button switcher on mobile presenter */}
+                {questionsList.length > 1 && (
+                  <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+                    {questionsList.map((_, qIdx) => (
+                      <button
+                        key={qIdx}
+                        type="button"
+                        onClick={() => setActiveQuestionIdx(qIdx)}
+                        style={{
+                          padding: '6px 12px',
+                          background: qIdx === currentQIdx ? '#2B2B2B' : '#FAFAFA',
+                          color: qIdx === currentQIdx ? '#FAFAFA' : '#2B2B2B',
+                          border: '1px solid #2B2B2B',
+                          boxShadow: qIdx === currentQIdx ? '2px 2px 0px rgba(43,43,43,0.25)' : 'none',
+                          fontSize: '0.78rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          fontFamily: "'Special Elite', monospace",
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        Question #{qIdx + 1}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Typewriter Text for Question */}
+                <TypewriterText
+                  key={`mobile-q-${currentQIdx}`}
+                  text={currentQuestion?.title || ''}
+                  as="h2"
                   style={{
-                    fontSize: '1.28rem',
+                    fontSize: '1.25rem',
                     lineHeight: 1.35,
                     fontWeight: 800,
-                    color: 'var(--text-primary)',
+                    color: '#2B2B2B',
                   }}
-                >
-                  {currentQuestion?.title}
-                </h2>
+                />
 
                 {/* Animated Bars */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
                   {currentOptions.map((option, index) => {
                     const isLeader = option.votes > 0 && option.votes === highestVotes;
                     return (
@@ -530,38 +582,65 @@ export default function PresentationView() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    fontSize: '0.78rem',
-                    color: 'var(--text-muted)',
+                    fontSize: '0.8rem',
+                    color: '#555555',
                     paddingTop: '10px',
-                    borderTop: '1px solid var(--border-subtle)',
+                    borderTop: '1px dashed #2B2B2B',
                     marginTop: '6px',
                   }}
                 >
                   <span>{currentQVotes} votes on this question</span>
-                  <span style={{ color: isConnected ? '#34d399' : '#fbbf24' }}>
-                    {isConnected ? 'Live WebSocket' : 'Connecting...'}
+                  <span style={{ color: isConnected ? '#2563EB' : '#DC2626', fontWeight: 700 }}>
+                    {isConnected ? 'Sync Active' : 'Connecting...'}
                   </span>
                 </div>
               </div>
 
-              {/* Tactile Mobile Presenter Action Buttons */}
+              {/* Presenter Action Buttons */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
-                <button
-                  type="button"
-                  onClick={handleCompletePoll}
-                  disabled={isUpdatingStatus}
-                  className="btn-primary touch-target"
-                  style={{
-                    width: '100%',
-                    padding: '14px',
-                    fontSize: '0.95rem',
-                    fontWeight: 800,
-                    gap: '8px',
-                  }}
-                >
-                  <Flag size={18} color="#000000" />
-                  Finish Poll &amp; Show Leaderboard
-                </button>
+                {pollIsConcluded ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ textAlign: 'center', padding: '6px 10px', background: 'rgba(220, 38, 38, 0.08)', border: '1px dashed #DC2626' }}>
+                      <span className="stamp-seal" style={{ fontSize: '0.7rem' }}>★ POLL CONCLUDED • RESULTS FINALIZED ★</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('leaderboard')}
+                      className="btn-stamp touch-target"
+                      style={{ width: '100%', padding: '12px', fontSize: '0.92rem', gap: '8px', justifyContent: 'center' }}
+                    >
+                      <Trophy size={16} color="#FFFFFF" />
+                      View Leaderboard Podium
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResumePoll}
+                      disabled={isUpdatingStatus}
+                      className="btn-secondary touch-target"
+                      style={{ width: '100%', padding: '10px', fontSize: '0.85rem', gap: '6px', justifyContent: 'center' }}
+                    >
+                      <RotateCcw size={14} />
+                      Reopen Voting
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleCompletePoll}
+                    disabled={isUpdatingStatus}
+                    className="btn-stamp touch-target"
+                    style={{
+                      width: '100%',
+                      padding: '14px',
+                      fontSize: '0.95rem',
+                      fontWeight: 800,
+                      gap: '8px',
+                    }}
+                  >
+                    <Flag size={18} color="#FFFFFF" />
+                    Conclude Poll &amp; Show Leaderboard
+                  </button>
+                )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <button
@@ -579,14 +658,14 @@ export default function PresentationView() {
                     className="btn-secondary touch-target"
                     style={{ padding: '12px', fontSize: '0.85rem', gap: '6px' }}
                   >
-                    {copied ? <Check size={16} color="#10b981" /> : <Share2 size={16} />}
+                    {copied ? <Check size={16} color="#DC2626" /> : <Share2 size={16} />}
                     {copied ? 'Link Copied!' : 'Share Link'}
                   </button>
                 </div>
               </div>
             </motion.div>
           ) : (
-            /* Live Projector Split Screen Layout (LiveChart) for Laptop / Projector */
+            /* Live Projector Split Screen Layout */
             <motion.div
               key="live-view"
               initial={{ opacity: 0, y: 10 }}
@@ -594,9 +673,9 @@ export default function PresentationView() {
               exit={{ opacity: 0, y: -10 }}
               className="presentation-grid"
             >
-              {/* Left Column: Large QR Code & Join Instructions */}
+              {/* Left Column: QR Code Box */}
               <div
-                className="glass-panel-glow"
+                className="glass-panel"
                 style={{
                   padding: '36px 28px',
                   display: 'flex',
@@ -605,31 +684,30 @@ export default function PresentationView() {
                   justifyContent: 'center',
                   textAlign: 'center',
                   position: 'relative',
+                  background: '#FAFAFA',
+                  border: '1px solid #2B2B2B',
+                  boxShadow: '6px 6px 0px rgba(43, 43, 43, 0.15)',
                 }}
               >
                 <div
-                  style={{
-                    fontSize: '0.8rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.12em',
-                    fontWeight: 700,
-                    color: 'var(--accent-cyan)',
-                    marginBottom: '8px',
-                  }}
+                  className="stamp-seal"
+                  style={{ marginBottom: '10px', fontSize: '0.78rem' }}
                 >
-                  Join with your Phone
+                  JOIN AUDIENCE
                 </div>
                 <h2
                   style={{
                     fontSize: '1.75rem',
                     marginBottom: '16px',
-                    fontFamily: 'var(--font-heading)',
+                    fontFamily: "'Special Elite', monospace",
+                    color: '#2B2B2B',
+                    fontWeight: 800,
                   }}
                 >
                   Scan to Vote Live
                 </h2>
 
-                {/* Unique Session ID Card */}
+                {/* Unique Session ID Dispatch Slip */}
                 <div
                   style={{
                     display: 'flex',
@@ -637,13 +715,11 @@ export default function PresentationView() {
                     alignItems: 'center',
                     gap: '6px',
                     marginBottom: '20px',
-                    padding: '14px 20px',
-                    borderRadius: '14px',
-                    background: 'rgba(72, 229, 194, 0.08)',
-                    border: '1px solid rgba(72, 229, 194, 0.35)',
+                    padding: '12px 18px',
+                    background: '#F4F1EA',
+                    border: '1px dashed #2B2B2B',
                     maxWidth: '320px',
                     width: '100%',
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
                   }}
                 >
                   <div
@@ -653,26 +729,24 @@ export default function PresentationView() {
                       gap: '5px',
                       fontSize: '0.72rem',
                       textTransform: 'uppercase',
-                      letterSpacing: '0.12em',
-                      fontWeight: 700,
-                      color: 'var(--accent-cyan)',
+                      letterSpacing: '0.1em',
+                      fontWeight: 800,
+                      color: '#2B2B2B',
                     }}
                   >
                     <Hash size={13} />
-                    <span>Unique Session ID</span>
+                    <span>Session PIN</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
                     <code
                       style={{
-                        fontSize: '1rem',
+                        fontSize: '1.05rem',
                         fontWeight: 700,
                         fontFamily: 'monospace',
-                        color: '#FCFAF9',
-                        letterSpacing: '0.04em',
-                        background: 'rgba(0, 0, 0, 0.45)',
+                        color: '#2B2B2B',
+                        background: '#FAFAFA',
                         padding: '4px 10px',
-                        borderRadius: '6px',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        border: '1px solid #2B2B2B',
                       }}
                     >
                       {id}
@@ -682,34 +756,34 @@ export default function PresentationView() {
                       onClick={handleCopyId}
                       title="Copy Session ID"
                       style={{
-                        background: copiedId ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.08)',
-                        border: copiedId ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.2)',
-                        borderRadius: '6px',
-                        color: copiedId ? '#34d399' : '#FCFAF9',
+                        background: copiedId ? '#DBEAFE' : '#FAFAFA',
+                        border: '1px solid #2B2B2B',
+                        color: copiedId ? '#2563EB' : '#2B2B2B',
                         cursor: 'pointer',
                         padding: '5px 10px',
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '4px',
                         fontSize: '0.75rem',
-                        fontWeight: 600,
-                        transition: 'all 0.2s ease',
+                        fontWeight: 700,
+                        fontFamily: "'Special Elite', monospace",
+                        boxShadow: '2px 2px 0px rgba(43, 43, 43, 0.15)',
                       }}
                     >
-                      {copiedId ? <Check size={13} color="#34d399" /> : <Copy size={13} />}
+                      {copiedId ? <Check size={13} color="#2563EB" /> : <Copy size={13} />}
                       {copiedId ? 'Copied' : 'Copy'}
                     </button>
                   </div>
                 </div>
 
-                {/* QR Code Container on pure Bright Snow background */}
+                {/* QR Code Container wrapped in Ballot White box with harsh drop shadow */}
                 <div
                   className="qr-code-wrapper"
                   style={{
-                    background: '#FCFAF9',
-                    padding: '22px',
-                    borderRadius: '16px',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)',
+                    background: '#FAFAFA',
+                    padding: '20px',
+                    border: '1px solid #2B2B2B',
+                    boxShadow: '6px 6px 0px rgba(43, 43, 43, 0.15)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -722,8 +796,8 @@ export default function PresentationView() {
                     size={210}
                     level="H"
                     includeMargin={false}
-                    fgColor="#000000"
-                    bgColor="#FCFAF9"
+                    fgColor="#2B2B2B"
+                    bgColor="#FAFAFA"
                     style={{ maxWidth: '100%', height: 'auto' }}
                   />
                 </div>
@@ -731,8 +805,8 @@ export default function PresentationView() {
                 {/* Universal Network Joining Note */}
                 <p
                   style={{
-                    fontSize: '0.8rem',
-                    color: 'var(--text-muted)',
+                    fontSize: '0.84rem',
+                    color: '#555555',
                     marginBottom: '16px',
                     maxWidth: '310px',
                     lineHeight: 1.45,
@@ -742,17 +816,16 @@ export default function PresentationView() {
                     gap: '6px',
                   }}
                 >
-                  <Globe size={14} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+                  <Globe size={14} style={{ color: '#2B2B2B', flexShrink: 0 }} />
                   <span>
-                    <strong style={{ color: 'var(--text-secondary)' }}>Any Network:</strong>{' '}
-                    Scan QR code or enter the Session ID above from any device or connection.
+                    <strong>Open to all devices:</strong> Scan with any smartphone camera to vote live from anywhere.
                   </span>
                 </p>
 
                 {/* Direct Link Info */}
                 <div style={{ maxWidth: '320px', width: '100%' }}>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
-                    Or point your mobile browser to:
+                  <p style={{ fontSize: '0.82rem', color: '#555555', marginBottom: '8px' }}>
+                    Or enter URL in mobile browser:
                   </p>
                   <div
                     onClick={handleCopyUrl}
@@ -760,30 +833,29 @@ export default function PresentationView() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      padding: '10px 14px',
-                      borderRadius: 'var(--radius-md)',
-                      background: 'rgba(0, 0, 0, 0.4)',
-                      border: '1px solid var(--border-subtle)',
-                      fontSize: '0.85rem',
-                      color: 'var(--text-secondary)',
+                      padding: '8px 12px',
+                      background: '#F4F1EA',
+                      border: '1px dashed #2B2B2B',
+                      fontSize: '0.82rem',
+                      color: '#2B2B2B',
                       cursor: 'pointer',
-                      transition: 'all 0.2s ease',
+                      fontFamily: "'Special Elite', monospace",
                     }}
                   >
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '8px' }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '8px', fontWeight: 600 }}>
                       {voteUrl}
                     </span>
-                    {copied ? <Check size={16} color="#10b981" /> : <Share2 size={16} />}
+                    {copied ? <Check size={16} color="#DC2626" /> : <Share2 size={16} color="#2B2B2B" />}
                   </div>
                   {copied && (
-                    <span style={{ fontSize: '0.75rem', color: '#10b981', display: 'block', marginTop: '4px' }}>
-                      Copied vote URL!
+                    <span style={{ fontSize: '0.74rem', color: '#DC2626', display: 'block', marginTop: '4px', fontWeight: 700 }}>
+                      Vote URL copied to clipboard!
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Right Column: Live Animated Spring Bar Chart */}
+              {/* Right Column: Live Animated Stark Rectangles Bar Chart */}
               <div
                 className="glass-panel"
                 style={{
@@ -791,9 +863,12 @@ export default function PresentationView() {
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
+                  background: '#FAFAFA',
+                  border: '1px solid #2B2B2B',
+                  boxShadow: '6px 6px 0px rgba(43, 43, 43, 0.15)',
                 }}
               >
-                {/* Question Navigation Tabs (for multi-question polls) */}
+                {/* Question Navigation Tabs */}
                 {questionsList.length > 1 && (
                   <div
                     style={{
@@ -802,7 +877,7 @@ export default function PresentationView() {
                       justifyContent: 'space-between',
                       marginBottom: '20px',
                       paddingBottom: '14px',
-                      borderBottom: '1px solid var(--border-subtle)',
+                      borderBottom: '2px dashed #2B2B2B',
                       flexWrap: 'wrap',
                       gap: '10px',
                     }}
@@ -815,16 +890,14 @@ export default function PresentationView() {
                           onClick={() => setActiveQuestionIdx(qIdx)}
                           style={{
                             padding: '6px 14px',
-                            borderRadius: '10px',
-                            border: qIdx === currentQIdx ? '1px solid rgba(255, 255, 255, 0.25)' : '1px solid rgba(255, 255, 255, 0.08)',
-                            background: qIdx === currentQIdx ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'rgba(255, 255, 255, 0.04)',
-                            color: qIdx === currentQIdx ? '#000000' : 'var(--text-secondary)',
+                            border: '1px solid #2B2B2B',
+                            background: qIdx === currentQIdx ? '#2B2B2B' : '#FAFAFA',
+                            color: qIdx === currentQIdx ? '#FAFAFA' : '#2B2B2B',
                             fontSize: '0.84rem',
-                            fontWeight: qIdx === currentQIdx ? 700 : 500,
+                            fontWeight: 700,
                             cursor: 'pointer',
-                            boxShadow: qIdx === currentQIdx ? '0 2px 10px rgba(72, 229, 194, 0.35)' : 'none',
-                            backdropFilter: 'blur(10px)',
-                            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                            boxShadow: qIdx === currentQIdx ? '3px 3px 0px rgba(43, 43, 43, 0.25)' : 'none',
+                            fontFamily: "'Special Elite', monospace",
                           }}
                         >
                           Question #{qIdx + 1}
@@ -857,13 +930,13 @@ export default function PresentationView() {
                   </div>
                 )}
 
-                {/* Question Title */}
+                {/* Question Title with <TypewriterText> */}
                 <div style={{ marginBottom: '28px' }}>
                   <span
                     style={{
                       fontSize: '0.85rem',
-                      color: 'var(--accent-primary)',
-                      fontWeight: 700,
+                      color: '#2B2B2B',
+                      fontWeight: 800,
                       textTransform: 'uppercase',
                       letterSpacing: '0.08em',
                       display: 'block',
@@ -872,16 +945,18 @@ export default function PresentationView() {
                   >
                     Question {currentQIdx + 1} of {questionsList.length}
                   </span>
-                  <h1
+
+                  <TypewriterText
+                    key={`pres-q-${currentQIdx}`}
+                    text={currentQuestion?.title || ''}
+                    as="h1"
                     style={{
-                      fontSize: '2.2rem',
+                      fontSize: '2.1rem',
                       lineHeight: 1.25,
                       fontWeight: 800,
-                      color: 'var(--text-primary)',
+                      color: '#2B2B2B',
                     }}
-                  >
-                    {currentQuestion?.title}
-                  </h1>
+                  />
                 </div>
 
                 {/* Animated Options Bar Chart */}
@@ -908,15 +983,14 @@ export default function PresentationView() {
                   })}
                 </div>
 
-                {/* Presenter Finish Action Bar inside the Projector Chart Panel */}
-                {!pollIsConcluded && (
+                {/* Presenter Finish Action Bar */}
+                {pollIsConcluded ? (
                   <div
                     style={{
                       marginTop: '28px',
-                      padding: '18px 24px',
-                      borderRadius: '16px',
-                      background: 'rgba(72, 229, 194, 0.12)',
-                      border: '1px solid rgba(72, 229, 194, 0.35)',
+                      padding: '16px 20px',
+                      background: 'rgba(220, 38, 38, 0.06)',
+                      border: '2px dashed #DC2626',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -925,13 +999,63 @@ export default function PresentationView() {
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <Flag size={20} color="#48E5C2" />
+                      <span className="stamp-seal" style={{ fontSize: '0.74rem' }}>
+                        ★ POLL CONCLUDED ★
+                      </span>
                       <div>
-                        <div style={{ fontSize: '0.98rem', fontWeight: 700, color: '#FCFAF9' }}>
-                          Ready to conclude this session?
+                        <div style={{ fontSize: '0.94rem', fontWeight: 800, color: '#2B2B2B', fontFamily: "'Special Elite', monospace" }}>
+                          Final Live Results Chart
                         </div>
-                        <span style={{ fontSize: '0.82rem', color: 'rgba(252, 250, 249, 0.65)' }}>
-                          Locks voting screens and transitions projector to the final Leaderboard
+                        <span style={{ fontSize: '0.8rem', color: '#555555' }}>
+                          Voting has concluded. Displaying finalized responses and percentages.
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => setViewMode('leaderboard')}
+                        className="btn-stamp"
+                        style={{ padding: '8px 16px', fontSize: '0.84rem', gap: '6px' }}
+                      >
+                        <Trophy size={14} color="#FFFFFF" />
+                        View Leaderboard Podium
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleResumePoll}
+                        disabled={isUpdatingStatus}
+                        className="btn-secondary"
+                        style={{ padding: '8px 14px', fontSize: '0.84rem', gap: '6px' }}
+                      >
+                        <RotateCcw size={14} />
+                        Reopen Voting
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      marginTop: '28px',
+                      padding: '18px 24px',
+                      background: '#F4F1EA',
+                      border: '1px dashed #2B2B2B',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '12px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Flag size={20} color="#DC2626" />
+                      <div>
+                        <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#2B2B2B' }}>
+                          Conclude polling session?
+                        </div>
+                        <span style={{ fontSize: '0.82rem', color: '#555555' }}>
+                          Closes voting and displays the final presentation leaderboard
                         </span>
                       </div>
                     </div>
@@ -940,21 +1064,17 @@ export default function PresentationView() {
                       type="button"
                       onClick={handleCompletePoll}
                       disabled={isUpdatingStatus}
-                      className="btn-primary"
+                      className="btn-stamp"
                       style={{
-                        background: '#48E5C2',
-                        color: '#333333',
                         padding: '12px 24px',
                         fontSize: '0.95rem',
-                        fontWeight: 700,
+                        fontWeight: 800,
                         gap: '8px',
-                        borderRadius: '16px',
-                        boxShadow: '0 4px 18px rgba(72, 229, 194, 0.45)',
                         cursor: 'pointer',
                       }}
                     >
-                      <Flag size={18} color="#333333" />
-                      Finish Session &amp; Show Leaderboard
+                      <Flag size={18} color="#FFFFFF" />
+                      Conclude Poll &amp; Show Leaderboard
                     </button>
                   </div>
                 )}
@@ -963,44 +1083,44 @@ export default function PresentationView() {
                 <div
                   style={{
                     marginTop: '24px',
-                    paddingTop: '20px',
-                    borderTop: '1px solid var(--border-subtle)',
+                    paddingTop: '16px',
+                    borderTop: '1px dashed #2B2B2B',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    fontSize: '0.85rem',
-                    color: 'var(--text-muted)',
+                    fontSize: '0.84rem',
+                    color: '#555555',
                     flexWrap: 'wrap',
                     gap: '10px',
+                    fontFamily: "'Special Elite', monospace",
                   }}
                 >
-                  <span>Live chart streaming via WebSocket &bull; {currentQVotes} votes on this question</span>
+                  <span>Live responses streaming &bull; {currentQVotes} votes on this question</span>
                   <span
                     style={{
-                      color: isConnected ? '#34d399' : '#fbbf24',
+                      color: isConnected ? '#2563EB' : '#DC2626',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '6px',
+                      fontWeight: 700,
                     }}
                   >
                     <span
                       style={{
                         width: '8px',
                         height: '8px',
-                        borderRadius: '50%',
-                        background: isConnected ? '#34d399' : '#fbbf24',
+                        background: isConnected ? '#2563EB' : '#DC2626',
                         display: 'inline-block',
-                        boxShadow: isConnected ? '0 0 8px #34d399' : 'none',
                       }}
                     />
-                    {isConnected ? 'Connected to Redis Live Stream' : 'WebSocket Disconnected'}
+                    {isConnected ? 'Live Sync Connected' : 'Sync Disconnected'}
                   </span>
                 </div>
               </div>
             </motion.div>
           )
         ) : (
-          /* Leaderboard Component Mount: Unmounts LiveChart on POLL_COMPLETED */
+          /* Leaderboard Component Mount */
           <Leaderboard
             poll={poll}
             voterNames={voterNames}
@@ -1016,9 +1136,7 @@ export default function PresentationView() {
             style={{
               position: 'fixed',
               inset: 0,
-              background: 'rgba(0, 0, 0, 0.85)',
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
+              background: 'rgba(43, 43, 43, 0.8)',
               zIndex: 9999,
               display: 'flex',
               alignItems: 'center',
@@ -1028,11 +1146,11 @@ export default function PresentationView() {
             onClick={() => setShowMobileQRModal(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="glass-panel-glow"
+              className="glass-panel"
               style={{
                 width: '100%',
                 maxWidth: '380px',
@@ -1042,6 +1160,9 @@ export default function PresentationView() {
                 alignItems: 'center',
                 textAlign: 'center',
                 position: 'relative',
+                background: '#FAFAFA',
+                border: '2px solid #2B2B2B',
+                boxShadow: '8px 8px 0px rgba(43, 43, 43, 0.3)',
               }}
             >
               <button
@@ -1049,17 +1170,16 @@ export default function PresentationView() {
                 onClick={() => setShowMobileQRModal(false)}
                 style={{
                   position: 'absolute',
-                  top: '16px',
-                  right: '16px',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: '36px',
-                  height: '36px',
+                  top: '14px',
+                  right: '14px',
+                  background: '#FAFAFA',
+                  border: '1px solid #2B2B2B',
+                  width: '32px',
+                  height: '32px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'var(--text-secondary)',
+                  color: '#2B2B2B',
                   cursor: 'pointer',
                 }}
               >
@@ -1067,18 +1187,12 @@ export default function PresentationView() {
               </button>
 
               <div
-                style={{
-                  fontSize: '0.75rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.12em',
-                  fontWeight: 700,
-                  color: 'var(--accent-cyan)',
-                  marginBottom: '6px',
-                }}
+                className="stamp-seal"
+                style={{ marginBottom: '10px', fontSize: '0.74rem' }}
               >
-                Universal QR Code
+                LIVE ACCESS
               </div>
-              <h3 style={{ fontSize: '1.35rem', fontWeight: 800, marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '16px', color: '#2B2B2B', fontFamily: "'Special Elite', monospace" }}>
                 Scan to Vote Live
               </h3>
 
@@ -1086,10 +1200,10 @@ export default function PresentationView() {
               <div
                 className="qr-code-wrapper"
                 style={{
-                  background: '#FCFAF9',
+                  background: '#FAFAFA',
                   padding: '18px',
-                  borderRadius: '16px',
-                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)',
+                  border: '1px solid #2B2B2B',
+                  boxShadow: '6px 6px 0px rgba(43, 43, 43, 0.15)',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -1101,8 +1215,8 @@ export default function PresentationView() {
                   size={200}
                   level="H"
                   includeMargin={false}
-                  fgColor="#000000"
-                  bgColor="#FCFAF9"
+                  fgColor="#2B2B2B"
+                  bgColor="#FAFAFA"
                   style={{ maxWidth: '100%', height: 'auto' }}
                 />
               </div>
@@ -1114,14 +1228,13 @@ export default function PresentationView() {
                   alignItems: 'center',
                   gap: '8px',
                   padding: '6px 12px',
-                  borderRadius: '10px',
-                  background: 'rgba(72, 229, 194, 0.1)',
-                  border: '1px solid rgba(72, 229, 194, 0.3)',
+                  background: '#F4F1EA',
+                  border: '1px dashed #2B2B2B',
                   marginBottom: '14px',
                 }}
               >
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>PIN:</span>
-                <code style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--accent-primary)' }}>
+                <span style={{ fontSize: '0.8rem', color: '#555555' }}>PIN:</span>
+                <code style={{ fontSize: '0.95rem', fontWeight: 700, color: '#2B2B2B', fontFamily: 'monospace' }}>
                   {id}
                 </code>
                 <button
@@ -1131,12 +1244,12 @@ export default function PresentationView() {
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
-                    color: copiedId ? '#34d399' : 'var(--text-secondary)',
+                    color: copiedId ? '#2563EB' : '#2B2B2B',
                     display: 'inline-flex',
                     padding: '2px',
                   }}
                 >
-                  {copiedId ? <Check size={14} color="#34d399" /> : <Copy size={14} />}
+                  {copiedId ? <Check size={14} color="#2563EB" /> : <Copy size={14} />}
                 </button>
               </div>
 
@@ -1147,12 +1260,12 @@ export default function PresentationView() {
                 className="btn-secondary"
                 style={{ width: '100%', padding: '10px', fontSize: '0.85rem', gap: '6px' }}
               >
-                {copied ? <Check size={14} color="#10b981" /> : <Share2 size={14} />}
+                {copied ? <Check size={14} color="#DC2626" /> : <Share2 size={14} />}
                 {copied ? 'Vote URL Copied!' : 'Copy Direct Link'}
               </button>
 
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '12px', lineHeight: 1.4 }}>
-                Participants can join from any phone or internet connection.
+              <p style={{ fontSize: '0.75rem', color: '#555555', marginTop: '12px', lineHeight: 1.4 }}>
+                Participants can join from any phone or browser.
               </p>
             </motion.div>
           </div>

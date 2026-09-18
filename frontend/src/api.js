@@ -8,10 +8,24 @@ export const getHost = () => {
   return 'localhost';
 };
 
+// Check if running in a local/LAN environment (localhost or private LAN IP e.g. 192.168.x.x, 10.x.x.x)
+const isLocalNetwork = () => {
+  if (typeof window === 'undefined' || !window.location) return true;
+  const h = window.location.hostname;
+  return (
+    h === 'localhost' ||
+    h === '127.0.0.1' ||
+    h === '0.0.0.0' ||
+    h.endsWith('.local') ||
+    /^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(h)
+  );
+};
+
 // Target Go backend from environment variables or fallback to current host on port 8080
 const rawBackend = (import.meta.env?.VITE_BACKEND_URL || '').trim().replace(/\/+$/, '');
 const customApi = (import.meta.env?.VITE_API_URL || '').trim().replace(/\/+$/, '');
 const customWs = (import.meta.env?.VITE_WS_URL || '').trim().replace(/\/+$/, '');
+const forceRemote = import.meta.env?.VITE_FORCE_REMOTE === 'true';
 
 // Ensure backend URL has protocol if supplied without one
 let normalizedBackend = rawBackend;
@@ -25,21 +39,30 @@ const sanitizeWs = (url) => {
   return url.trim().replace(/\/+$/, '').replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:');
 };
 
-export const API_BASE = customApi
-  ? customApi
-  : normalizedBackend
-  ? (normalizedBackend.endsWith('/api') ? normalizedBackend : `${normalizedBackend}/api`)
-  : (typeof window !== 'undefined'
-      ? `http://${getHost()}:8080/api`
-      : 'http://localhost:8080/api');
+// In local development or LAN testing (e.g. mobile phone connecting to laptop Wi-Fi IP),
+// route directly to the local Go backend on port 8080 so both devices communicate with the same backend.
+export const API_BASE = (() => {
+  if (typeof window !== 'undefined' && isLocalNetwork() && !forceRemote) {
+    return `http://${getHost()}:8080/api`;
+  }
+  if (customApi) return customApi;
+  if (normalizedBackend) return normalizedBackend.endsWith('/api') ? normalizedBackend : `${normalizedBackend}/api`;
+  return typeof window !== 'undefined' ? `http://${getHost()}:8080/api` : 'http://localhost:8080/api';
+})();
 
-export const WS_URL = customWs
-  ? sanitizeWs(customWs)
-  : normalizedBackend
-  ? `${sanitizeWs(normalizedBackend)}${normalizedBackend.endsWith('/api') ? '/ws' : '/api/ws'}`
-  : (typeof window !== 'undefined'
-      ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${getHost()}:8080/api/ws`
-      : 'ws://localhost:8080/api/ws');
+export const WS_URL = (() => {
+  if (typeof window !== 'undefined' && isLocalNetwork() && !forceRemote) {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${proto}//${getHost()}:8080/api/ws`;
+  }
+  if (customWs) return sanitizeWs(customWs);
+  if (normalizedBackend) {
+    const wsBackend = sanitizeWs(normalizedBackend);
+    return `${wsBackend}${wsBackend.endsWith('/api') ? '/ws' : '/api/ws'}`;
+  }
+  const proto = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${getHost()}:8080/api/ws`;
+})();
 
 // Safe JSON parser helper to prevent crashes on non-JSON responses
 async function parseResponse(response, defaultError) {

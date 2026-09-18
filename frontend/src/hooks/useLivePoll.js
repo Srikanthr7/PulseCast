@@ -144,8 +144,24 @@ export function useLivePoll(pollId) {
     isMountedRef.current = true;
     connectWebSocket();
 
+    // Re-sync immediately when page becomes visible or regains focus (e.g. participant unlocks phone or switches tabs)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isMountedRef.current && pollId) {
+        fetchInitialPoll();
+        // If socket is disconnected, try reconnecting immediately
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+          connectWebSocket();
+        }
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange);
+
     return () => {
       isMountedRef.current = false;
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
@@ -153,7 +169,35 @@ export function useLivePoll(pollId) {
         wsRef.current.close();
       }
     };
-  }, [connectWebSocket]);
+  }, [connectWebSocket, fetchInitialPoll, pollId]);
+
+  // 3. Periodic Background Reconciliation Polling
+  // Ensures updates never lag even if WebSocket packets are throttled by mobile OS power-saving
+  useEffect(() => {
+    if (!pollId || isCompleted) return;
+
+    const pollIntervalMs = isConnected ? 3000 : 1500;
+    const interval = setInterval(async () => {
+      try {
+        const data = await getPoll(pollId);
+        if (isMountedRef.current && data) {
+          setPoll(data);
+          if (data.status === 'completed') {
+            setIsCompleted(true);
+          } else if (data.status === 'active') {
+            setIsCompleted(false);
+          }
+          if (data.voter_names && Array.isArray(data.voter_names)) {
+            setVoterNames(data.voter_names);
+          }
+        }
+      } catch (e) {
+        // quiet fallback
+      }
+    }, pollIntervalMs);
+
+    return () => clearInterval(interval);
+  }, [pollId, isCompleted, isConnected]);
 
   return {
     poll,

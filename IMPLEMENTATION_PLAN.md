@@ -1,123 +1,87 @@
-# Implementation Plan: Comprehensive Multi-Device Responsive Architecture (Laptop vs Mobile UI)
+# Implementation Plan: "Vintage Ballot Box" Tactile Paper UI/UX
 
-Optimize PulseCast for all devices by providing dedicated, tailored UI/UX experiences for both laptops/desktops and mobile devices across all key screens: Navigation, Creator Studio, Mobile Voting, and Presentation/Projector.
-
-## Proposed Architecture
-
-```mermaid
-graph TD
-    Client[Browser Client] --> Hook[useDeviceType Hook]
-    Hook -->|isMobile: width < 768px| MobileUI[Mobile-First UI Layer]
-    Hook -->|isLaptop: width >= 768px| LaptopUI[Laptop/Desktop Studio Layer]
-    
-    MobileUI --> MNav[Compact Header + Frosted Bottom Dock]
-    MobileUI --> MDash[Tabbed Creator Mobile: Builder / Sessions / Join]
-    MobileUI --> MVote[Native-feel Mobile Voting with Haptic Touch]
-    MobileUI --> MPresent[Pocket Presenter Remote with Collapsible QR]
-    
-    LaptopUI --> LNav[Full Wide Nav with Session Pulse & Profile]
-    LaptopUI --> LDash[Dual-Pane Studio: Live Multi-Q Builder + Session Sidebar]
-    LaptopUI --> LVote[Desktop Kiosk / Station with Keyboard Shortcuts]
-    LaptopUI --> LPresent[Grand Stage Projector: Split Radar QR & Live Analytics]
-```
+Overhaul the React frontend to perfectly mimic a physical, tactile paper ballot system. Strip all modern glassmorphism, blur, rounded corners, and soft drop-shadows in favor of brutalist paper textures, typewriter typography, ballpoint pen selections, and ruled guestbook signatures.
 
 ## User Review Required
 
-> [!NOTE]
-> - **Zero Disruption**: Existing URL routing (`/`, `/present/:id`, `/vote/:id`, `/vote`) is 100% preserved.
-> - **Auto-Adaptive**: Device detection is dynamic based on window dimensions and touch sensors, seamlessly switching if a user resizes or rotates their screen.
-> - **Bottom Navigation**: Mobile screens gain an app-like floating bottom dock for one-thumb reachability, with safe-area padding for modern iOS and Android home bars.
+> [!IMPORTANT]
+> - All modern design elements (glassmorphism, gradients, rounded pills, soft ambient shadows) will be replaced with sharp 90-degree corners (`border-radius: 0`), harsh physical paper shadows (`box-shadow: 6px 6px 0px rgba(43, 43, 43, 0.15)`), and 1px/2px solid or dashed borders (`#2B2B2B`).
+> - Primary text and questions will use **Special Elite** (typewriter style).
+> - Voter names and ballot selection marks will use **Caveat** (handwritten style).
+
+---
+
+## Color Palette & Theme Tokens
+
+| Token | Hex | Role | Applied Elements |
+|---|---|---|---|
+| **Parchment** | `#F4F1EA` | Global Paper Background | Global `<body>` with SVG `feTurbulence` grain filter |
+| **Ballot White** | `#FAFAFA` | Ballot Cards & Sheets | Questions cards, clipboard sheets, unselected buttons, QR box |
+| **Ink Black** | `#2B2B2B` | Primary Ink | All primary typewriter text, standard chart bars, sharp borders |
+| **Ballpoint Blue** | `#2563EB` | Pen Ink Selection | Mobile button tapped/selected state, handwritten "X" ballot mark |
+| **Red Stamp** | `#DC2626` | Official Ink Stamp | Winning chart bar, official stamps, highlight badges |
 
 ---
 
 ## Proposed Changes
 
-### 1. Device Sensing & Global Responsive Utilities
-#### [NEW] [frontend/src/hooks/useDeviceType.js](file:///d:/PulseCast/frontend/src/hooks/useDeviceType.js)
-- Responsive hook listening to viewport resize with debouncing.
-- Exports `{ isMobile, isTablet, isLaptop, isTouch, deviceType, width }`.
-- Standard breakpoints: Mobile (`< 768px`), Tablet (`768px - 1024px`), Laptop (`>= 1024px`).
+### 1. Typography & Global CSS
+#### [MODIFY] [`frontend/index.html`](file:///d:/PulseCast/frontend/index.html)
+- Add Google Fonts link for `Special Elite` (weights 400) and `Caveat` (weights 600, 700).
 
-#### [MODIFY] [frontend/src/index.css](file:///d:/PulseCast/frontend/src/index.css)
-- Add mobile-first utilities:
-  - `.mobile-only` (`display: block` under 768px, `none` above).
-  - `.desktop-only` (`display: none` under 768px, `block` above).
-  - Safe-area inset variables for mobile notch & home indicator (`env(safe-area-inset-bottom)`).
-  - Dynamic viewport units (`100dvh`) to prevent address-bar jumps on iOS Safari and Android Chrome.
-  - Large touch targets (min 44px) for mobile buttons and option chips.
-  - Mobile bottom navigation bar styling with glassmorphism.
+#### [MODIFY] [`frontend/src/index.css`](file:///d:/PulseCast/frontend/src/index.css)
+- Replace modern light tokens with Vintage Ballot Box palette (`--bg-parchment: #F4F1EA`, `--bg-ballot: #FAFAFA`, `--ink-black: #2B2B2B`, `--ballpoint-blue: #2563EB`, `--red-stamp: #DC2626`).
+- Configure global `body` background: `#F4F1EA` with an inline SVG `feTurbulence` data URI (`fractalNoise, baseFrequency 0.8, opacity 0.06`) for realistic tactile paper grain.
+- Define brutalist paper card utility (`.paper-card`, `.glass-panel` override): `background: #FAFAFA`, `border: 1px solid #2B2B2B`, `border-radius: 0px !important`, `box-shadow: 6px 6px 0px rgba(43, 43, 43, 0.15)`.
+- Enforce `border-radius: 0 !important` on buttons, inputs, tags, and bars.
 
 ---
 
-### 2. Navigation Shell
-#### [NEW] [frontend/src/components/MobileBottomNav.jsx](file:///d:/PulseCast/frontend/src/components/MobileBottomNav.jsx)
-- Mobile-specific floating bottom dock with glassmorphism:
-  - `Vote` (Smartphone icon)
-  - `Create` (PlusCircle icon)
-  - `Projector` (Presentation icon)
-  - `Account` (User icon)
-- Subtle active glow and safe-area margin.
+### 2. Components
+#### [NEW] [`frontend/src/components/TypewriterText.jsx`](file:///d:/PulseCast/frontend/src/components/TypewriterText.jsx)
+- Typewriter character-by-character reveal using Framer Motion `staggerChildren: 0.05`.
+- Instant child strike (`duration: 0`) to simulate a mechanical typewriter key strike.
+- Animated blinking rectangular cursor (`▋`).
 
-#### [MODIFY] [frontend/src/components/Header.jsx](file:///d:/PulseCast/frontend/src/components/Header.jsx)
-- On **Laptop**: Keep rich top bar with full logo, live ping indicator, desktop nav pills, user profile avatar and logout.
-- On **Mobile**: Compact header with minimal height (52px), streamlined title and connection status badge, freeing 80% more screen real estate for content.
+#### [MODIFY] [`frontend/src/components/AnimatedBar.jsx`](file:///d:/PulseCast/frontend/src/components/AnimatedBar.jsx)
+- Enforce sharp rectangular bars (`border-radius: 0`).
+- Standard bars: **Ink Black (`#2B2B2B`)**.
+- Winning bar: **Red Stamp (`#DC2626`)** with a stamped "TOP BALLOT" indicator.
+- Container: Ballot White (`#FAFAFA`) with `border: 1px solid #2B2B2B`, harsh shadow `6px 6px 0px rgba(43, 43, 43, 0.15)`.
 
----
+#### [MODIFY] [`frontend/src/components/Leaderboard.jsx`](file:///d:/PulseCast/frontend/src/components/Leaderboard.jsx)
+- Styled like a physical sign-in guestbook on lined/ruled paper.
+- Render `voter_names` in **Caveat** font with alternating slight rotations (`rotate(-2deg)` / `rotate(2deg)`) mimicking authentic handwritten pen signatures.
+- Red stamp seal for winners and official verification badges.
 
-### 3. Creator Dashboard (Studio)
-#### [MODIFY] [frontend/src/pages/CreatorDashboard.jsx](file:///d:/PulseCast/frontend/src/pages/CreatorDashboard.jsx)
-- **Laptop UI**:
-  - Dual-column studio layout:
-    - Left/Main (65% width): Multi-Question Poll Studio with interactive question cards, drag/reorder preview, template quick-starters.
-    - Right (35% width sidebar): "My Polling Sessions" manager with live participation counters, quick-action projector launch, copy QR link, and delete session.
-- **Mobile UI**:
-  - Mobile-first segmented control:
-    - Tab 1: `Poll Builder` (Full-width touch inputs, swipeable question selector, bottom sticky "Launch Poll" button).
-    - Tab 2: `My Sessions` (Touch-friendly card list with one-tap Projector, Copy Link, and Delete).
-    - Tab 3: `Join / Test` (Instant PIN/Session entry).
-  - Unauthenticated Auth Card: Seamless 100% width card with Google OAuth button and tab toggle without horizontal scroll.
+#### [MODIFY] [`frontend/src/components/Header.jsx`](file:///d:/PulseCast/frontend/src/components/Header.jsx)
+- Physical ballot paper banner with dashed lower border, typewriter brand text, and stark rectangular buttons.
 
 ---
 
-### 4. Mobile Voting Screen
-#### [MODIFY] [frontend/src/pages/MobileVotingScreen.jsx](file:///d:/PulseCast/frontend/src/pages/MobileVotingScreen.jsx)
-- **Laptop Experience ("Desktop Polling Kiosk")**:
-  - Wide centered 2-column card layout:
-    - Left: Active Question, options with keyboard shortcuts (`1`, `2`, `3`, `4`, `Enter`).
-    - Right: Session details, presenter link, real-time voter pulse indicator, and animated tips.
-- **Mobile Experience ("Native Touch App")**:
-  - Full-screen height (`100dvh`), prominent question progress stepper (`Question 2 of 4`).
-  - Tactile option buttons (min-height 56px) with instant visual feedback and checkmark.
-  - Sticky bottom vote confirmation bar.
+### 3. Views
+#### [MODIFY] [`frontend/src/pages/MobileVotingScreen.jsx`](file:///d:/PulseCast/frontend/src/pages/MobileVotingScreen.jsx)
+- Display poll question using `<TypewriterText>`.
+- Voting buttons:
+  - Unselected: Ballot White (`#FAFAFA`), Ink Black text, `border: 1px solid #2B2B2B`, `box-shadow: 6px 6px 0px rgba(43, 43, 43, 0.15)`.
+  - Tapped / Selected: Background transitions to faint blue (`#DBEAFE`), text changes to Ballpoint Blue (`#2563EB`), and a handwritten "X" in `Caveat` font scales in next to the text.
+- Screen lock & Name capture styled as official ballot slips with dashed tear-off lines.
 
----
+#### [MODIFY] [`frontend/src/pages/PresentationView.jsx`](file:///d:/PulseCast/frontend/src/pages/PresentationView.jsx)
+- Question heading rendered with `<TypewriterText>`.
+- Stark rectangular bar chart with Ink Black & Red Stamp bars.
+- QR code wrapped in a Ballot White box with 1px black border and harsh offset shadow (`box-shadow: 6px 6px 0px rgba(43, 43, 43, 0.15)`).
 
-### 5. Live Presentation Screen
-#### [MODIFY] [frontend/src/pages/PresentationView.jsx](file:///d:/PulseCast/frontend/src/pages/PresentationView.jsx)
-- **Laptop / Projector Mode**:
-  - Split stage view with radar-pulsing QR code, scannable instructions, big vote percentages, and real-time live bars.
-- **Mobile Presenter Remote Mode**:
-  - When opened on a mobile device, provides a **Presenter Remote Control**:
-    - Floating / expandable QR code preview sheet.
-    - Large tactile presentation controls (`[Next Question]`, `[Lock Poll]`, `[Show Leaderboard]`).
-    - Live audience headcount and connection status for the host in the palm of their hand.
+#### [MODIFY] [`frontend/src/pages/CreatorDashboard.jsx`](file:///d:/PulseCast/frontend/src/pages/CreatorDashboard.jsx)
+- Styled like an official clipboard with clip accent.
+- Dashed bottom borders (`border-bottom: 2px dashed #2B2B2B`) separating each question in the multi-question builder.
+- Sharp rectangular inputs and typewriter typography.
 
 ---
 
 ## Verification Plan
-
-### Automated / Code Validation
-- Check JavaScript and JSX syntax for all modified and new components.
-- Verify that `useDeviceType` hook properly handles SSR/initial render and window resize listeners.
-
-### Multi-Device Verification
-1. **Desktop/Laptop Viewports (>=1024px)**:
-   - Verify Header shows full navigation items.
-   - Verify Creator Studio displays dual-column layout.
-   - Verify Voting screen provides desktop kiosk layout with keyboard hints.
-   - Verify Presentation screen displays grand stage 2-column layout.
-2. **Mobile Viewports (<768px)**:
-   - Verify compact top header + floating bottom navigation bar appear.
-   - Verify Creator Studio displays tabbed segmented interface with thumb-friendly controls.
-   - Verify Mobile Voting screen fits 100dvh without awkward horizontal scroll.
-   - Verify Presentation View adapts to Presenter Remote mode.
+1. **Visual Styling**: Verify background has paper grain texture and `#F4F1EA` color; confirm zero rounded corners (`border-radius: 0`) across cards, buttons, badges, and chart bars.
+2. **Typewriter Animation**: Verify `<TypewriterText>` types out instantly letter-by-letter with blinking cursor block.
+3. **Ballot Voting Mark**: Verify tapping mobile voting choices scales in a handwritten "X" in Caveat font with faint blue background and Ballpoint Blue text.
+4. **Guestbook Signatures**: Verify Leaderboard renders voter names in Caveat font with alternating hand-signed rotations (`-2deg` and `2deg`).
+5. **Chart Contrast**: Verify standard bars are Ink Black (`#2B2B2B`) and the leading bar is Red Stamp (`#DC2626`).

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,11 +12,24 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pulsecast/backend/config"
 	"github.com/pulsecast/backend/models"
+	"github.com/pulsecast/backend/ws"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+// broadcastPollEvent broadcasts real-time poll events to both in-memory WebSocket clients
+// and the Redis channel (if Redis is available), ensuring immediate live sync even without Redis.
+func broadcastPollEvent(payload interface{}) {
+	jsonBytes, err := json.Marshal(payload)
+	if err == nil {
+		ws.GlobalHub.Broadcast(jsonBytes)
+	}
+	if config.RedisClient != nil && config.RedisConnected {
+		_ = config.PublishEvent(config.RedisChannelName, payload)
+	}
+}
 
 var defaultColors = []string{"#6366f1", "#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6"}
 
@@ -560,18 +574,19 @@ func VoteOnPoll(c *gin.Context) {
 	updatedPoll.CalculateTotalVotes()
 
 	voteEvent := gin.H{
-		"type":        "VOTE_UPDATE",
-		"action":      "VOTE_UPDATE",
-		"poll_id":     pollIDParam,
-		"question_id": input.QuestionID,
-		"option_id":   input.OptionID,
-		"voter_name":  voterName,
-		"poll":        updatedPoll,
-		"total_votes": updatedPoll.TotalVotes,
-		"timestamp":   time.Now().UnixMilli(),
+		"type":            "VOTE_UPDATE",
+		"action":          "VOTE_UPDATE",
+		"poll_id":         pollIDParam,
+		"question_id":     input.QuestionID,
+		"option_id":       input.OptionID,
+		"voter_name":      voterName,
+		"poll":            updatedPoll,
+		"total_votes":     updatedPoll.TotalVotes,
+		"sender_instance": ws.InstanceID,
+		"timestamp":       time.Now().UnixMilli(),
 	}
 
-	_ = config.PublishEvent(config.RedisChannelName, voteEvent)
+	broadcastPollEvent(voteEvent)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":    "Vote recorded atomically",
@@ -645,19 +660,20 @@ func CompletePoll(c *gin.Context) {
 	}
 	updatedPoll.VoterNames = voterNames
 
-	// Broadcast POLL_COMPLETED over Redis to all WebSocket clients
+	// Broadcast POLL_COMPLETED over WebSocket & Redis to all clients
 	broadcastMsg := gin.H{
-		"action":      "POLL_COMPLETED",
-		"type":        "POLL_COMPLETED",
-		"poll_id":     pollIDParam,
-		"status":      "completed",
-		"voter_names": voterNames,
-		"poll":        updatedPoll,
-		"total_votes": updatedPoll.TotalVotes,
-		"timestamp":   time.Now().UnixMilli(),
+		"action":          "POLL_COMPLETED",
+		"type":            "POLL_COMPLETED",
+		"poll_id":         pollIDParam,
+		"status":          "completed",
+		"voter_names":     voterNames,
+		"poll":            updatedPoll,
+		"total_votes":     updatedPoll.TotalVotes,
+		"sender_instance": ws.InstanceID,
+		"timestamp":       time.Now().UnixMilli(),
 	}
 
-	_ = config.PublishEvent(config.RedisChannelName, broadcastMsg)
+	broadcastPollEvent(broadcastMsg)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":     "Poll completed successfully",
@@ -744,18 +760,19 @@ func UpdatePollStatus(c *gin.Context) {
 	}
 	updatedPoll.VoterNames = voterNames
 
-	// Broadcast status update over Redis to all connected clients (Presentation & Mobile screens)
+	// Broadcast status update over WebSocket & Redis to all connected clients (Presentation & Mobile screens)
 	statusEvent := gin.H{
-		"action":      func() string { if status == "completed" { return "POLL_COMPLETED" } else { return "POLL_RESUMED" } }(),
-		"type":        func() string { if status == "completed" { return "POLL_COMPLETED" } else { return "POLL_STATUS_UPDATE" } }(),
-		"poll_id":     pollIDParam,
-		"status":      status,
-		"voter_names": voterNames,
-		"poll":        updatedPoll,
-		"total_votes": updatedPoll.TotalVotes,
-		"timestamp":   time.Now().UnixMilli(),
+		"action":          func() string { if status == "completed" { return "POLL_COMPLETED" } else { return "POLL_RESUMED" } }(),
+		"type":            func() string { if status == "completed" { return "POLL_COMPLETED" } else { return "POLL_STATUS_UPDATE" } }(),
+		"poll_id":         pollIDParam,
+		"status":          status,
+		"voter_names":     voterNames,
+		"poll":            updatedPoll,
+		"total_votes":     updatedPoll.TotalVotes,
+		"sender_instance": ws.InstanceID,
+		"timestamp":       time.Now().UnixMilli(),
 	}
-	_ = config.PublishEvent(config.RedisChannelName, statusEvent)
+	broadcastPollEvent(statusEvent)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":     "Poll status updated successfully",
@@ -828,13 +845,15 @@ func DeletePoll(c *gin.Context) {
 		return
 	}
 
-	// Publish deletion event to Redis so any open clients receive the update
-	_ = config.PublishEvent(config.RedisChannelName, gin.H{
-		"type":      "POLL_DELETED",
-		"action":    "POLL_DELETED",
-		"poll_id":   idParam,
-		"timestamp": time.Now().UnixMilli(),
-	})
+	// Publish deletion event so any open clients receive the update
+	deleteEvent := gin.H{
+		"type":            "POLL_DELETED",
+		"action":          "POLL_DELETED",
+		"poll_id":         idParam,
+		"sender_instance": ws.InstanceID,
+		"timestamp":       time.Now().UnixMilli(),
+	}
+	broadcastPollEvent(deleteEvent)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Poll session deleted successfully",

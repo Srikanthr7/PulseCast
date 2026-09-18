@@ -2,37 +2,42 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Check,
-  CheckCircle2,
-  Lock,
   AlertCircle,
   RefreshCw,
   User,
   ArrowRight,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
-  Trophy,
-  PartyPopper,
   LogOut,
   Smartphone,
   Hash,
   Keyboard,
   Monitor,
+  BarChart2,
+  Trophy,
+  Sparkles,
+  CheckCircle2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useLivePoll } from '../hooks/useLivePoll';
 import { useDeviceType } from '../hooks/useDeviceType';
 import { castVote } from '../api';
+import TypewriterText from '../components/TypewriterText';
+import Leaderboard from '../components/Leaderboard';
+import AnimatedBar from '../components/AnimatedBar';
+import PodiumChart from '../components/PodiumChart';
 
 export default function MobileVotingScreen() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isMobile, isLaptop } = useDeviceType();
-  const { poll, isCompleted, loading, error, isConnected } = useLivePoll(id);
+  const { isMobile, isTablet, isLaptop } = useDeviceType();
+  const { poll, isCompleted, voterNames, loading, error, isConnected, refetch } = useLivePoll(id);
   const [inputSessionId, setInputSessionId] = useState('');
+  const [completedTab, setCompletedTab] = useState('leaderboard'); // 'leaderboard' | 'chart'
+  const [completedQuestionIdx, setCompletedQuestionIdx] = useState(0);
+  const [showActiveQuestionChart, setShowActiveQuestionChart] = useState(false);
 
-  // Audience Name Capture State - Always require name to be entered/confirmed first when opening QR link
+  // Audience Name Capture State
   const [voterName, setVoterName] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('pulsecast_voter_name') || '';
@@ -63,7 +68,6 @@ export default function MobileVotingScreen() {
       try {
         const saved = localStorage.getItem(`pulsecast_multi_votes_${id}`);
         if (saved) return JSON.parse(saved);
-        // Fallback to legacy single vote
         const single = localStorage.getItem(`pulsecast_voted_${id}`);
         if (single) return { [id]: single, default: single };
       } catch (e) {
@@ -85,7 +89,7 @@ export default function MobileVotingScreen() {
     }
   };
 
-  // Touch Swipe Gesture State for Mobile
+  // Touch Swipe Gesture State
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
   const minSwipeDistance = 50;
@@ -116,6 +120,8 @@ export default function MobileVotingScreen() {
   const currentSelectedOptionId = votedOptions[currentQId];
   const hasVotedCurrent = Boolean(currentSelectedOptionId);
   const isLocked = Boolean(isCompleted || poll?.status === 'completed');
+  const currentQVotes = currentQ?.options?.reduce((sum, opt) => sum + (opt.votes || 0), 0) || 0;
+  const currentHighestVotes = Math.max(...(currentQ?.options || []).map((o) => o.votes || 0), 0);
 
   // Swipe handling
   const handleTouchStart = (e) => {
@@ -141,25 +147,24 @@ export default function MobileVotingScreen() {
     }
   };
 
-  // Vote submission handler for a specific question & choice
+  // Vote submission handler
   const handleVote = async (optionId) => {
     if (isSubmitting || hasVotedCurrent || !id || !currentQ) return;
 
     setVoteError(null);
     setIsSubmitting(true);
 
-    // Optimistic UI: Immediately mark question as voted locally
     const updatedVotes = { ...votedOptions, [currentQId]: optionId };
     setVotedOptions(updatedVotes);
     localStorage.setItem(`pulsecast_multi_votes_${id}`, JSON.stringify(updatedVotes));
-    localStorage.setItem(`pulsecast_voted_${id}`, optionId); // Legacy fallback
+    localStorage.setItem(`pulsecast_voted_${id}`, optionId);
 
     try {
       confetti({
-        particleCount: 55,
+        particleCount: 50,
         spread: 60,
         origin: { y: 0.85 },
-        colors: ['#6366f1', '#06b6d4', '#10b981', '#f59e0b'],
+        colors: ['#2563EB', '#DC2626', '#2B2B2B', '#EBE7DD'],
       });
     } catch (e) {
       // ignore
@@ -168,26 +173,26 @@ export default function MobileVotingScreen() {
     try {
       await castVote(id, optionId, voterName || 'Audience Member', currentQ.id);
       setIsSubmitting(false);
+      if (typeof refetch === 'function') {
+        refetch();
+      }
 
-      // Auto-advance to next unanswered question after 600ms if available
       if (currentQuestionIndex < questions.length - 1) {
         setTimeout(() => {
           setCurrentQuestionIndex((prev) => prev + 1);
-        }, 600);
+        }, 700);
       }
     } catch (err) {
       console.error('Vote failed:', err);
-      // Rollback optimistic state
       const rollback = { ...votedOptions };
       delete rollback[currentQId];
       setVotedOptions(rollback);
       localStorage.setItem(`pulsecast_multi_votes_${id}`, JSON.stringify(rollback));
       setIsSubmitting(false);
-      setVoteError(err.message || 'Vote failed to register on server. Please try again.');
+      setVoteError(err.message || 'Vote failed to register. Please try again.');
     }
   };
 
-  // Reset votes on this device for testing
   const handleResetDeviceVotes = () => {
     if (typeof window !== 'undefined' && id) {
       localStorage.removeItem(`pulsecast_multi_votes_${id}`);
@@ -197,7 +202,7 @@ export default function MobileVotingScreen() {
     setVoteError(null);
   };
 
-  // Desktop keyboard voting shortcuts ([1], [2], [3], [4], [A], [B], [C], [D], ArrowLeft, ArrowRight)
+  // Desktop keyboard voting shortcuts
   useEffect(() => {
     if (!isLaptop || !currentQ || hasVotedCurrent || !nameSubmitted || isLocked) return;
 
@@ -232,28 +237,24 @@ export default function MobileVotingScreen() {
   // If visited /vote directly without an ID parameter
   if (!id) {
     return (
-      <main style={{ maxWidth: '460px', margin: '60px auto', padding: '0 20px', textAlign: 'center' }}>
-        <div className="glass-panel-glow" style={{ padding: '36px 28px', borderRadius: '20px' }}>
-          <div
-            style={{
-              width: '54px',
-              height: '54px',
-              borderRadius: '16px',
-              background: 'rgba(72, 229, 194, 0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 18px',
-              color: 'var(--accent-primary)',
-            }}
-          >
-            <Smartphone size={28} />
+      <main style={{ maxWidth: '480px', margin: '60px auto', padding: '0 20px', textAlign: 'center' }}>
+        <div
+          className="glass-panel"
+          style={{
+            padding: '36px 28px',
+            border: '2px solid #2B2B2B',
+            boxShadow: '6px 6px 0px rgba(43, 43, 43, 0.2)',
+            background: '#FAFAFA',
+          }}
+        >
+          <div className="stamp-seal" style={{ marginBottom: '16px' }}>
+            JOIN LIVE POLL
           </div>
-          <h1 style={{ fontSize: '1.75rem', marginBottom: '8px', fontFamily: 'var(--font-heading)' }}>
-            Join Live Poll
+          <h1 style={{ fontSize: '1.8rem', marginBottom: '8px', fontFamily: "'Special Elite', monospace" }}>
+            Participant Sign-In
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '24px' }}>
-            Enter the Unique Session ID from the presenter's screen to vote live from any device:
+          <p style={{ color: '#555555', fontSize: '0.92rem', marginBottom: '24px' }}>
+            Enter the Session PIN from the presenter's screen to vote in this live poll:
           </p>
           <form
             onSubmit={(e) => {
@@ -279,7 +280,7 @@ export default function MobileVotingScreen() {
               className="btn-primary"
               style={{ justifyContent: 'center', padding: '12px', fontSize: '1rem' }}
             >
-              Join Poll
+              Open Poll Session
               <ArrowRight size={18} />
             </button>
           </form>
@@ -291,20 +292,31 @@ export default function MobileVotingScreen() {
   if (loading && !poll) {
     return (
       <div style={{ textAlign: 'center', padding: '100px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
-        <RefreshCw size={32} className="animate-spin" color="var(--accent-primary)" />
-        <p style={{ color: 'var(--text-secondary)' }}>Loading live poll from MongoDB...</p>
+        <RefreshCw size={32} className="animate-spin" color="#2B2B2B" />
+        <p style={{ color: '#555555', fontFamily: "'Special Elite', monospace" }}>
+          Loading live poll session...
+        </p>
       </div>
     );
   }
 
   if (error || !poll) {
     return (
-      <div style={{ textAlign: 'center', padding: '60px 20px', maxWidth: '440px', margin: '0 auto' }}>
-        <div className="glass-panel" style={{ padding: '32px 24px', borderRadius: '18px' }}>
-          <AlertCircle size={40} color="#ef4444" style={{ margin: '0 auto 14px' }} />
-          <h2 style={{ fontSize: '1.4rem', marginBottom: '8px' }}>Poll Not Found</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '20px' }}>
-            {error || 'This live poll session could not be located. It may have expired or the ID is incorrect.'}
+      <div style={{ textAlign: 'center', padding: '60px 20px', maxWidth: '460px', margin: '0 auto' }}>
+        <div
+          className="glass-panel"
+          style={{
+            padding: '32px 24px',
+            border: '2px solid #2B2B2B',
+            boxShadow: '6px 6px 0px rgba(43, 43, 43, 0.2)',
+          }}
+        >
+          <AlertCircle size={40} color="#DC2626" style={{ margin: '0 auto 14px' }} />
+          <h2 style={{ fontSize: '1.4rem', marginBottom: '8px', fontFamily: "'Special Elite', monospace" }}>
+            Poll Session Not Found
+          </h2>
+          <p style={{ color: '#555555', fontSize: '0.88rem', marginBottom: '20px' }}>
+            {error || 'This live poll session could not be located. Please check the session ID.'}
           </p>
           <form
             onSubmit={(e) => {
@@ -329,11 +341,11 @@ export default function MobileVotingScreen() {
               className="btn-primary"
               style={{ justifyContent: 'center', padding: '10px', fontSize: '0.9rem' }}
             >
-              Try Session ID
+              Verify Session ID
               <ArrowRight size={16} />
             </button>
           </form>
-          <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textDecoration: 'underline' }}>
+          <Link to="/" style={{ color: '#2B2B2B', fontSize: '0.85rem', textDecoration: 'underline' }}>
             Return to Home
           </Link>
         </div>
@@ -341,220 +353,436 @@ export default function MobileVotingScreen() {
     );
   }
 
-  // --- 1. Screen Lock when POLL_COMPLETED is received ---
+  // --- 1. When Poll Is Concluded: Render Leaderboard & Live Results Chart on Mobile ---
   if (isLocked) {
+    const mergedVoterNames = Array.from(
+      new Set([
+        ...(voterNames || []),
+        ...(poll?.voter_names || []),
+        ...(poll?.voters?.map((v) => v.name) || []),
+        voterName,
+      ].filter(Boolean))
+    );
+
+    const safeCompletedQIdx = Math.min(completedQuestionIdx, Math.max(0, questions.length - 1));
+    const activeCompletedQ = questions[safeCompletedQIdx] || questions[0];
+    const completedQVotes = activeCompletedQ?.options?.reduce((sum, opt) => sum + (opt.votes || 0), 0) || 0;
+    const completedHighestVotes = Math.max(...(activeCompletedQ?.options || []).map((o) => o.votes || 0), 0);
+    const userVoteForCompletedQ = votedOptions[activeCompletedQ?.id || safeCompletedQIdx];
+
     return (
       <main
         style={{
-          maxWidth: '520px',
+          maxWidth: isLaptop ? '1120px' : isTablet ? '840px' : '680px',
           margin: '0 auto',
-          padding: '40px 20px',
-          minHeight: '80vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
+          padding: isMobile ? '16px 14px calc(84px + var(--safe-bottom))' : '36px 24px',
+          width: '100%',
         }}
       >
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-          className="glass-panel-glow"
+        {/* Segmented Top View Toggle: Leaderboard Chart vs Live Results Chart */}
+        <div
           style={{
-            padding: '40px 32px',
-            borderRadius: 'var(--radius-lg)',
-            textAlign: 'center',
-            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(99, 102, 241, 0.12) 100%)',
-            border: '1px solid rgba(16, 185, 129, 0.4)',
-            boxShadow: '0 0 40px rgba(16, 185, 129, 0.25)',
-            width: '100%',
+            display: 'flex',
+            gap: '8px',
+            marginBottom: '20px',
+            background: '#FAFAFA',
+            padding: '6px',
+            border: '2px solid #2B2B2B',
+            boxShadow: '4px 4px 0px rgba(43, 43, 43, 0.15)',
           }}
         >
-          {/* Animated Celebration Icon */}
-          <div
+          <button
+            type="button"
+            onClick={() => setCompletedTab('leaderboard')}
             style={{
-              width: '76px',
-              height: '76px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              flex: 1,
+              padding: isMobile ? '10px 8px' : '11px 18px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              margin: '0 auto 20px',
-              color: '#ffffff',
-              boxShadow: '0 0 25px rgba(16, 185, 129, 0.5)',
-            }}
-          >
-            <PartyPopper size={40} />
-          </div>
-
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
               gap: '6px',
-              padding: '4px 12px',
-              borderRadius: 'var(--radius-full)',
-              background: 'rgba(16, 185, 129, 0.2)',
-              color: '#34d399',
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              marginBottom: '12px',
+              background: completedTab === 'leaderboard' ? '#2B2B2B' : 'transparent',
+              color: completedTab === 'leaderboard' ? '#FAFAFA' : '#2B2B2B',
+              border: completedTab === 'leaderboard' ? '1px solid #1A1A1A' : 'none',
+              fontWeight: 800,
+              fontSize: isMobile ? '0.82rem' : '0.94rem',
+              cursor: 'pointer',
+              fontFamily: "'Special Elite', monospace",
+              transition: 'all 0.15s ease',
             }}
           >
-            <Lock size={12} />
-            POLL CONCLUDED
-          </div>
+            <Trophy size={16} color={completedTab === 'leaderboard' ? '#FAFAFA' : '#DC2626'} />
+            Leaderboard Chart
+          </button>
 
-          <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: '#ffffff', marginBottom: '10px' }}>
-            Thanks for participating!
-          </h1>
+          <button
+            type="button"
+            onClick={() => setCompletedTab('chart')}
+            style={{
+              flex: 1,
+              padding: isMobile ? '10px 8px' : '11px 18px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              background: completedTab === 'chart' ? '#2B2B2B' : 'transparent',
+              color: completedTab === 'chart' ? '#FAFAFA' : '#2B2B2B',
+              border: completedTab === 'chart' ? '1px solid #1A1A1A' : 'none',
+              fontWeight: 800,
+              fontSize: isMobile ? '0.82rem' : '0.94rem',
+              cursor: 'pointer',
+              fontFamily: "'Special Elite', monospace",
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <BarChart2 size={16} color={completedTab === 'chart' ? '#FAFAFA' : '#2563EB'} />
+            Live Results Chart
+          </button>
+        </div>
 
-          <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1.5, marginBottom: '24px' }}>
-            The presenter has concluded this poll session. Voting is now locked, and the final leaderboard is on the main projector screen.
-          </p>
-
-          {/* Voter Attribution Badge */}
-          {voterName && (
+        {completedTab === 'leaderboard' ? (
+          <Leaderboard
+            poll={poll}
+            voterNames={mergedVoterNames}
+            isVoterView={true}
+          />
+        ) : (
+          /* Live Results Chart View after Poll Completion */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Poll Status Banner */}
             <div
+              className="glass-panel"
               style={{
-                display: 'inline-flex',
+                padding: isMobile ? '18px 16px' : '24px 28px',
+                background: '#FAFAFA',
+                border: '2px solid #2B2B2B',
+                boxShadow: '6px 6px 0px rgba(43, 43, 43, 0.15)',
+                display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
-                padding: '8px 18px',
-                borderRadius: 'var(--radius-full)',
-                background: 'rgba(255, 255, 255, 0.08)',
-                border: '1px solid var(--border-subtle)',
-                marginBottom: '24px',
-                fontSize: '0.9rem',
-                color: 'var(--text-primary)',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px',
               }}
             >
-              <User size={14} color="var(--accent-cyan)" />
-              <span>Attributed as: <strong>{voterName}</strong></span>
-              <CheckCircle2 size={14} color="#10b981" />
-            </div>
-          )}
+              <div>
+                <div className="stamp-seal" style={{ marginBottom: '6px', fontSize: '0.72rem' }}>
+                  ★ POLL CONCLUDED • FINAL RESULTS ★
+                </div>
+                <h1
+                  style={{
+                    fontSize: isMobile ? '1.35rem' : '1.8rem',
+                    fontWeight: 800,
+                    color: '#2B2B2B',
+                    margin: 0,
+                    fontFamily: "'Special Elite', monospace",
+                  }}
+                >
+                  Live Results Chart
+                </h1>
+                <p style={{ color: '#555555', fontSize: '0.84rem', margin: '4px 0 0', fontFamily: "'Special Elite', monospace" }}>
+                  Displaying final verified results for each question.
+                </p>
+              </div>
 
-          {/* Session Summary Card */}
-          <div
-            style={{
-              background: 'rgba(0, 0, 0, 0.3)',
-              borderRadius: 'var(--radius-md)',
-              padding: '18px 20px',
-              textAlign: 'left',
-              marginBottom: '24px',
-              border: '1px solid var(--border-subtle)',
-            }}
-          >
-            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: '10px' }}>
-              Your Session Activity:
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    confetti({
+                      particleCount: 60,
+                      spread: 70,
+                      origin: { y: 0.6 },
+                      colors: ['#2563EB', '#DC2626', '#2B2B2B'],
+                    });
+                  }}
+                  className="btn-stamp"
+                  style={{ padding: '8px 14px', fontSize: '0.84rem', gap: '6px' }}
+                >
+                  <Sparkles size={14} color="#FFFFFF" />
+                  Celebrate
+                </button>
+                <Link
+                  to="/"
+                  className="btn-secondary"
+                  style={{ padding: '8px 14px', fontSize: '0.84rem', gap: '4px' }}
+                >
+                  Done
+                </Link>
+              </div>
             </div>
-            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-              &bull; Answered {Object.keys(votedOptions).length} of {questions.length} questions
-            </div>
-            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-              &bull; Session: {poll.title || poll.question || 'Live Interactive Poll'}
+
+            {/* Multi-Question Selector Tabs */}
+            {questions.length > 1 && (
+              <div
+                className="horizontal-scroll-touch"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  overflowX: 'auto',
+                  paddingBottom: '6px',
+                  WebkitOverflowScrolling: 'touch',
+                }}
+              >
+                {questions.map((q, qIdx) => (
+                  <button
+                    key={q.id || qIdx}
+                    type="button"
+                    onClick={() => setCompletedQuestionIdx(qIdx)}
+                    style={{
+                      padding: isMobile ? '7px 12px' : '8px 16px',
+                      background: qIdx === safeCompletedQIdx ? '#2B2B2B' : '#FAFAFA',
+                      color: qIdx === safeCompletedQIdx ? '#FAFAFA' : '#2B2B2B',
+                      border: '1px solid #2B2B2B',
+                      boxShadow: qIdx === safeCompletedQIdx ? '3px 3px 0px rgba(43, 43, 43, 0.25)' : 'none',
+                      fontWeight: 800,
+                      fontSize: isMobile ? '0.8rem' : '0.84rem',
+                      cursor: 'pointer',
+                      fontFamily: "'Special Elite', monospace",
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                      minHeight: isMobile ? '38px' : '42px',
+                    }}
+                  >
+                    Question #{qIdx + 1}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Question Winner Podium Chart */}
+            <PodiumChart
+              questionTitle={activeCompletedQ?.title}
+              questionIndex={safeCompletedQIdx}
+              totalQuestions={questions.length}
+              options={activeCompletedQ?.options || []}
+              voters={poll?.voters || []}
+              totalVotes={completedQVotes}
+              isMobile={isMobile}
+              isTablet={isTablet}
+              badgeText={`QUESTION #${safeCompletedQIdx + 1} PODIUM`}
+            />
+
+            {/* Active Question Option Details Card */}
+            <div
+              className="glass-panel"
+              style={{
+                padding: isMobile ? '20px 16px' : '28px 30px',
+                background: '#FAFAFA',
+                border: '2px solid #2B2B2B',
+                boxShadow: '6px 6px 0px rgba(43, 43, 43, 0.15)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '18px',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderBottom: '2px dashed #2B2B2B',
+                  paddingBottom: '12px',
+                  flexWrap: 'wrap',
+                  gap: '8px',
+                }}
+              >
+                <div>
+                  <span
+                    style={{
+                      background: '#2B2B2B',
+                      color: '#FAFAFA',
+                      fontSize: '0.78rem',
+                      fontWeight: 800,
+                      padding: '2px 8px',
+                      display: 'inline-block',
+                      marginBottom: '4px',
+                      fontFamily: "'Special Elite', monospace",
+                    }}
+                  >
+                    Question {safeCompletedQIdx + 1} of {questions.length}
+                  </span>
+                  <h3
+                    style={{
+                      fontSize: isMobile ? '1.18rem' : '1.38rem',
+                      fontWeight: 800,
+                      margin: 0,
+                      color: '#2B2B2B',
+                      fontFamily: "'Special Elite', monospace",
+                    }}
+                  >
+                    {activeCompletedQ?.title}
+                  </h3>
+                </div>
+
+                <div style={{ fontSize: '0.88rem', color: '#555555', fontFamily: "'Special Elite', monospace" }}>
+                  <strong style={{ color: '#2B2B2B', fontSize: '1rem' }}>{completedQVotes}</strong> total votes
+                </div>
+              </div>
+
+              {/* Animated Bars for each option */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {activeCompletedQ?.options?.map((option, idx) => {
+                  const isLeader = option.votes > 0 && option.votes === completedHighestVotes;
+                  const isVoterPick = String(userVoteForCompletedQ) === String(option.id);
+
+                  return (
+                    <div key={option.id || idx} style={{ position: 'relative' }}>
+                      <AnimatedBar
+                        option={option}
+                        totalVotes={completedQVotes}
+                        isLeader={isLeader}
+                        index={idx}
+                      />
+                      {isVoterPick && (
+                        <div
+                          style={{
+                            marginTop: '4px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 8px',
+                            background: '#DBEAFE',
+                            border: '1px solid #2563EB',
+                            color: '#2563EB',
+                            fontSize: '0.75rem',
+                            fontWeight: 800,
+                            fontFamily: "'Special Elite', monospace",
+                          }}
+                        >
+                          <CheckCircle2 size={12} color="#2563EB" />
+                          <span>YOUR VOTE WAS RECORDED HERE</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Navigation buttons between questions */}
+              {questions.length > 1 && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingTop: '12px',
+                    borderTop: '1px dashed #2B2B2B',
+                  }}
+                >
+                  <button
+                    type="button"
+                    disabled={safeCompletedQIdx === 0}
+                    onClick={() => setCompletedQuestionIdx((prev) => Math.max(0, prev - 1))}
+                    className="btn-secondary"
+                    style={{ padding: '8px 14px', fontSize: '0.84rem', opacity: safeCompletedQIdx === 0 ? 0.4 : 1 }}
+                  >
+                    &larr; Prev Question
+                  </button>
+                  <span style={{ fontSize: '0.8rem', color: '#555555' }}>
+                    {safeCompletedQIdx + 1} / {questions.length}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={safeCompletedQIdx === questions.length - 1}
+                    onClick={() => setCompletedQuestionIdx((prev) => Math.min(questions.length - 1, prev + 1))}
+                    className="btn-secondary"
+                    style={{ padding: '8px 14px', fontSize: '0.84rem', opacity: safeCompletedQIdx === questions.length - 1 ? 0.4 : 1 }}
+                  >
+                    Next Question &rarr;
+                  </button>
+                </div>
+              )}
             </div>
           </div>
-
-          <Link
-            to={`/present/${id}`}
-            className="btn-secondary"
-            style={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '0.95rem' }}
-          >
-            <Trophy size={16} color="#f59e0b" />
-            View Presentation Leaderboard
-          </Link>
-        </motion.div>
+        )}
       </main>
     );
   }
 
-  // --- 2. Initial Name Capture Screen (If audience member hasn't set their name) ---
+  // --- 2. Initial Name Capture Screen: Audience Sign-In Slip ---
   if (!nameSubmitted) {
     return (
-      <main style={{ maxWidth: '440px', margin: '50px auto', padding: '0 20px', width: '100%', position: 'relative' }}>
-        {/* Ambient Specular Halo */}
+      <main style={{ maxWidth: '460px', margin: '50px auto', padding: '0 20px', width: '100%' }}>
         <div
+          className="glass-panel"
           style={{
-            position: 'absolute',
-            top: '30%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '300px',
-            height: '300px',
-            background: 'radial-gradient(circle, rgba(72, 229, 194, 0.12) 0%, rgba(99, 102, 241, 0.08) 50%, transparent 70%)',
-            borderRadius: '50%',
-            filter: 'blur(60px)',
-            pointerEvents: 'none',
-            zIndex: 0,
+            background: '#FAFAFA',
+            border: '2px solid #2B2B2B',
+            boxShadow: '8px 8px 0px rgba(43, 43, 43, 0.2)',
+            padding: '32px 28px',
+            position: 'relative',
           }}
-        />
-
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <div
+        >
+          {/* Stamped Header */}
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <div className="stamp-seal" style={{ marginBottom: '12px' }}>
+              AUDIENCE SIGN-IN
+            </div>
+            <h1
               style={{
-                width: '54px',
-                height: '54px',
-                borderRadius: '16px',
-                background: 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 16px',
-                color: '#000000',
-                boxShadow: '0 0 20px rgba(72, 229, 194, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4)',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
+                fontSize: '1.9rem',
+                marginBottom: '8px',
+                color: '#2B2B2B',
+                fontFamily: "'Special Elite', monospace",
               }}
             >
-              <User size={28} color="#000000" />
-            </div>
-            <h1 style={{ fontSize: '1.9rem', marginBottom: '8px', letterSpacing: '-0.03em' }}>
-              Welcome to the <span className="gradient-text">Live Poll</span>
+              Enter Your Name
             </h1>
             {poll && (
               <div
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 14px',
-                  borderRadius: '999px',
-                  background: 'rgba(72, 229, 194, 0.1)',
-                  border: '1px solid rgba(72, 229, 194, 0.3)',
-                  color: 'var(--accent-cyan)',
-                  fontSize: '0.85rem',
+                  display: 'inline-block',
+                  padding: '4px 12px',
+                  background: '#F4F1EA',
+                  border: '1px dashed #2B2B2B',
+                  color: '#2B2B2B',
+                  fontSize: '0.84rem',
                   fontWeight: 600,
-                  marginBottom: '10px',
+                  marginBottom: '12px',
                 }}
               >
-                Session: {poll.title || poll.question || 'Live Interactive Poll'}
+                Session: {poll.title || poll.question || 'Live Poll'}
               </div>
             )}
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.5 }}>
-              Please enter your name to join this session and vote live:
+            <p style={{ color: '#555555', fontSize: '0.9rem', lineHeight: 1.45 }}>
+              Enter your name below to participate and cast your votes in this session:
             </p>
           </div>
 
-          <div className="glass-panel" style={{ padding: '30px 26px' }}>
           <form onSubmit={handleNameSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
-                Your Name
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '0.88rem',
+                  fontWeight: 700,
+                  marginBottom: '6px',
+                  color: '#2B2B2B',
+                  fontFamily: "'Special Elite', monospace",
+                  textTransform: 'uppercase',
+                }}
+              >
+                Your Name / Signature
               </label>
               <input
                 type="text"
                 className="input-field"
-                placeholder="e.g. Alex, Sarah, DevNinja"
+                placeholder="e.g. Alex Henderson, Sarah, DevNinja"
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
                 maxLength={40}
                 required
                 autoFocus
+                style={{
+                  fontFamily: nameInput ? "'Caveat', cursive" : "'Special Elite', monospace",
+                  fontSize: nameInput ? '1.35rem' : '16px',
+                  color: '#2563EB',
+                }}
               />
+              <span style={{ fontSize: '0.74rem', color: '#666666', marginTop: '4px', display: 'block' }}>
+                Your name will appear as a handwritten signature on the presentation guestbook.
+              </span>
             </div>
 
             <button
@@ -562,11 +790,10 @@ export default function MobileVotingScreen() {
               className="btn-primary"
               style={{ justifyContent: 'center', padding: '12px', fontSize: '1rem' }}
             >
-              Join Session &amp; Start Voting
+              Join Session &amp; Vote
               <ArrowRight size={18} />
             </button>
           </form>
-        </div>
         </div>
       </main>
     );
@@ -577,7 +804,7 @@ export default function MobileVotingScreen() {
 
   const renderVotingControls = () => (
     <div>
-      {/* Mobile Top Bar: Session Info & Name Chip */}
+      {/* Top Session Info Bar */}
       <div
         style={{
           display: 'flex',
@@ -585,7 +812,7 @@ export default function MobileVotingScreen() {
           justifyContent: 'space-between',
           marginBottom: '20px',
           paddingBottom: '12px',
-          borderBottom: '1px solid var(--border-subtle)',
+          borderBottom: '2px dashed #2B2B2B',
           flexWrap: 'wrap',
           gap: '8px',
         }}
@@ -595,13 +822,11 @@ export default function MobileVotingScreen() {
             style={{
               width: '8px',
               height: '8px',
-              borderRadius: '50%',
-              backgroundColor: isConnected ? '#10b981' : '#f59e0b',
-              boxShadow: isConnected ? '0 0 6px #10b981' : 'none',
+              backgroundColor: isConnected ? '#2563EB' : '#DC2626',
             }}
           />
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            {isConnected ? 'Live Connected' : 'Reconnecting...'}
+          <span style={{ fontSize: '0.82rem', color: '#2B2B2B', fontWeight: 700 }}>
+            {isConnected ? 'LIVE SYNC: CONNECTED' : 'LIVE SYNC: RECONNECTING...'}
           </span>
         </div>
 
@@ -610,21 +835,23 @@ export default function MobileVotingScreen() {
             type="button"
             onClick={() => setNameSubmitted(false)}
             style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-full)',
-              padding: '4px 10px',
-              color: 'var(--text-secondary)',
-              fontSize: '0.8rem',
+              background: '#FAFAFA',
+              border: '1px solid #2B2B2B',
+              boxShadow: '2px 2px 0px rgba(43, 43, 43, 0.15)',
+              padding: '4px 12px',
+              color: '#2563EB',
+              fontSize: '0.85rem',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
               cursor: 'pointer',
+              fontWeight: 700,
+              fontFamily: "'Caveat', cursive",
             }}
-            title="Click to edit name"
+            title="Click to change your name"
           >
-            <User size={12} color="var(--accent-cyan)" />
-            <span>{voterName}</span>
+            <User size={12} color="#2563EB" />
+            <span style={{ fontSize: '1.15rem' }}>{voterName}</span>
           </button>
 
           <Link
@@ -634,13 +861,13 @@ export default function MobileVotingScreen() {
               alignItems: 'center',
               gap: '4px',
               fontSize: '0.78rem',
-              color: '#f87171',
-              padding: '4px 8px',
-              borderRadius: 'var(--radius-full)',
-              background: 'rgba(239, 68, 68, 0.08)',
-              border: '1px solid rgba(239, 68, 68, 0.25)',
+              color: '#DC2626',
+              padding: '4px 10px',
+              background: '#FAFAFA',
+              border: '1px solid #DC2626',
               textDecoration: 'none',
-              fontWeight: 500,
+              fontWeight: 700,
+              boxShadow: '2px 2px 0px rgba(220, 38, 38, 0.15)',
             }}
             title="Exit voting session"
           >
@@ -651,30 +878,37 @@ export default function MobileVotingScreen() {
       </div>
 
       {/* Multi-Question Progress Header */}
-      <div style={{ marginBottom: '24px' }}>
+      <div style={{ marginBottom: '22px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <span
+            style={{
+              fontSize: '0.88rem',
+              fontWeight: 800,
+              color: '#2B2B2B',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+            }}
+          >
             Question {currentQuestionIndex + 1} of {questions.length}
           </span>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            {isMobile ? 'Swipe or tap arrows to navigate' : 'Use keyboard numbers [1-4] or arrows'}
+          <span style={{ fontSize: '0.78rem', color: '#555555' }}>
+            {isMobile ? 'Swipe or tap buttons' : 'Use keyboard [1-4] or arrows'}
           </span>
         </div>
 
-        {/* Progress Bar */}
-        <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255, 255, 255, 0.08)', overflow: 'hidden' }}>
+        {/* Stark 90-degree Progress Bar */}
+        <div style={{ height: '8px', background: '#EBE7DD', border: '1px solid #2B2B2B', overflow: 'hidden' }}>
           <motion.div
             animate={{ width: `${progressPct}%` }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.2 }}
             style={{
               height: '100%',
-              background: 'var(--accent-gradient)',
-              borderRadius: '3px',
+              background: '#2B2B2B',
             }}
           />
         </div>
 
-        {/* Question Bubble Indicator Dots */}
+        {/* Question Selector Squares */}
         {questions.length > 1 && (
           <div style={{ display: 'flex', gap: '6px', marginTop: '12px', justifyContent: 'center' }}>
             {questions.map((q, idx) => {
@@ -688,21 +922,25 @@ export default function MobileVotingScreen() {
                   style={{
                     width: '32px',
                     height: '32px',
-                    borderRadius: '50%',
-                    border: isCurrent ? '2px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
-                    background: isCurrent ? 'rgba(99, 102, 241, 0.2)' : isAnswered ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                    color: isCurrent ? '#ffffff' : isAnswered ? '#34d399' : 'var(--text-muted)',
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
+                    border: isCurrent ? '2px solid #2B2B2B' : '1px solid #2B2B2B',
+                    background: isCurrent ? '#2B2B2B' : isAnswered ? '#DBEAFE' : '#FAFAFA',
+                    color: isCurrent ? '#FAFAFA' : isAnswered ? '#2563EB' : '#2B2B2B',
+                    boxShadow: isCurrent ? '3px 3px 0px rgba(43, 43, 43, 0.25)' : '2px 2px 0px rgba(43, 43, 43, 0.1)',
+                    fontSize: '0.85rem',
+                    fontWeight: 800,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     cursor: 'pointer',
-                    transition: 'all 0.2s ease',
+                    fontFamily: "'Special Elite', monospace",
                   }}
                   title={`Go to Question ${idx + 1}`}
                 >
-                  {isAnswered ? <Check size={14} /> : idx + 1}
+                  {isAnswered && !isCurrent ? (
+                    <span style={{ fontFamily: "'Caveat', cursive", fontSize: '1.25rem', fontWeight: 700 }}>✗</span>
+                  ) : (
+                    idx + 1
+                  )}
                 </button>
               );
             })}
@@ -710,38 +948,54 @@ export default function MobileVotingScreen() {
         )}
       </div>
 
-      {/* Current Question & Voting Card */}
+      {/* Current Question Card */}
       <AnimatePresence mode="wait">
         <motion.div
           key={currentQId}
-          initial={{ opacity: 0, x: 20 }}
+          initial={{ opacity: 0, x: 15 }}
           animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.25 }}
+          exit={{ opacity: 0, x: -15 }}
+          transition={{ duration: 0.2 }}
           className="glass-panel"
-          style={{ padding: isMobile ? '22px 18px' : '28px 24px', marginBottom: '24px' }}
+          style={{
+            background: '#FAFAFA',
+            border: '2px solid #2B2B2B',
+            boxShadow: '6px 6px 0px rgba(43, 43, 43, 0.2)',
+            padding: isMobile ? '22px 18px' : '28px 24px',
+            marginBottom: '24px',
+          }}
         >
-          <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.45rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.35, marginBottom: '20px' }}>
-            {currentQ?.title}
-          </h2>
+          {/* Question Title with Typewriter effect */}
+          <div style={{ marginBottom: '20px' }}>
+            <TypewriterText
+              key={`q-text-${currentQId}`}
+              text={currentQ?.title || ''}
+              as="h2"
+              style={{
+                fontSize: isMobile ? '1.25rem' : '1.45rem',
+                fontWeight: 800,
+                color: '#2B2B2B',
+                lineHeight: 1.35,
+              }}
+            />
+          </div>
 
           {/* Error Message */}
           {voteError && (
             <div
               style={{
-                background: 'rgba(239, 68, 68, 0.15)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: 'var(--radius-md)',
+                background: 'rgba(220, 38, 38, 0.08)',
+                border: '1px solid #DC2626',
                 padding: '10px 14px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                color: '#fca5a5',
+                color: '#DC2626',
                 fontSize: '0.85rem',
                 marginBottom: '16px',
               }}
             >
-              <AlertCircle size={16} color="#ef4444" />
+              <AlertCircle size={16} color="#DC2626" />
               <span>{voteError}</span>
             </div>
           )}
@@ -753,8 +1007,8 @@ export default function MobileVotingScreen() {
               return (
                 <motion.button
                   key={option.id || idx}
-                  whileHover={!hasVotedCurrent ? { scale: 1.01 } : {}}
-                  whileTap={!hasVotedCurrent ? { scale: 0.96 } : {}}
+                  whileHover={!hasVotedCurrent ? { x: 2 } : {}}
+                  whileTap={!hasVotedCurrent ? { x: 1, y: 1 } : {}}
                   onClick={() => handleVote(option.id)}
                   disabled={hasVotedCurrent || isSubmitting}
                   style={{
@@ -762,76 +1016,84 @@ export default function MobileVotingScreen() {
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: isMobile ? '14px 16px' : '16px 20px',
-                    borderRadius: '16px',
-                    border: isSelected ? '1.5px solid #48E5C2' : '1px solid rgba(255, 255, 255, 0.08)',
-                    background: isSelected ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'rgba(255, 255, 255, 0.035)',
-                    backdropFilter: 'blur(16px)',
-                    WebkitBackdropFilter: 'blur(16px)',
-                    color: isSelected ? '#000000' : '#F8FAFC',
+                    border: isSelected ? '2px solid #2563EB' : '1px solid #2B2B2B',
+                    background: isSelected ? '#DBEAFE' : '#FAFAFA',
+                    color: isSelected ? '#2563EB' : '#2B2B2B',
                     cursor: hasVotedCurrent ? 'default' : 'pointer',
-                    opacity: hasVotedCurrent && !isSelected ? 0.55 : 1,
+                    opacity: hasVotedCurrent && !isSelected ? 0.6 : 1,
                     textAlign: 'left',
-                    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                    boxShadow: isSelected ? '0 0 25px rgba(72, 229, 194, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3)' : '0 2px 10px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
-                    fontFamily: 'var(--font-body)',
+                    transition: 'background-color 0.2s ease, border-color 0.2s ease',
+                    boxShadow: isSelected
+                      ? '4px 4px 0px rgba(37, 99, 235, 0.3)'
+                      : '4px 4px 0px rgba(43, 43, 43, 0.15)',
+                    fontFamily: "'Special Elite', monospace",
+                    borderRadius: 0,
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1 }}>
+                    {/* Stark Letter Indicator */}
                     <span
                       style={{
                         width: '32px',
                         height: '32px',
-                        borderRadius: '9px',
-                        background: isSelected ? '#000000' : 'rgba(255, 255, 255, 0.06)',
+                        background: isSelected ? '#2563EB' : '#EBE7DD',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontWeight: 800,
-                        fontSize: '0.85rem',
-                        color: isSelected ? '#48E5C2' : '#F8FAFC',
-                        border: isSelected ? 'none' : '1px solid rgba(255, 255, 255, 0.12)',
+                        fontSize: '0.9rem',
+                        color: isSelected ? '#FAFAFA' : '#2B2B2B',
+                        border: '1px solid #2B2B2B',
                         flexShrink: 0,
                       }}
                     >
                       {String.fromCharCode(65 + idx)}
                     </span>
-                    <span style={{ fontSize: isMobile ? '0.96rem' : '1.05rem', fontWeight: isSelected ? 700 : 600, color: isSelected ? '#000000' : '#F8FAFC' }}>
+
+                    <span
+                      style={{
+                        fontSize: isMobile ? '1rem' : '1.1rem',
+                        fontWeight: 700,
+                        color: isSelected ? '#2563EB' : '#2B2B2B',
+                      }}
+                    >
                       {option.text}
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     {!isMobile && (
                       <span
                         style={{
-                          fontSize: '0.72rem',
-                          fontWeight: 600,
-                          color: isSelected ? '#000000' : 'var(--text-muted)',
-                          background: isSelected ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.06)',
-                          border: isSelected ? '1px solid rgba(0, 0, 0, 0.25)' : '1px solid rgba(255, 255, 255, 0.1)',
-                          borderRadius: '6px',
-                          padding: '2px 7px',
+                          fontSize: '0.74rem',
+                          color: '#555555',
+                          border: '1px solid #2B2B2B',
+                          background: '#FAFAFA',
+                          padding: '2px 6px',
                         }}
                       >
-                        Key [{idx + 1}]
+                        [{idx + 1}]
                       </span>
                     )}
+
+                    {/* Animated Handwritten "X" Scaling in */}
                     {isSelected && (
-                      <div
+                      <motion.span
+                        initial={{ scale: 0, rotate: -25 }}
+                        animate={{ scale: 1, rotate: -6 }}
+                        transition={{ type: 'spring', stiffness: 350, damping: 18 }}
                         style={{
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '50%',
-                          background: '#000000',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#48E5C2',
-                          flexShrink: 0,
+                          fontFamily: "'Caveat', cursive",
+                          fontSize: '2.2rem',
+                          fontWeight: 700,
+                          color: '#2563EB',
+                          lineHeight: 0.8,
+                          display: 'inline-block',
                         }}
+                        aria-label="Marked X"
                       >
-                        <Check size={15} strokeWidth={3} />
-                      </div>
+                        X
+                      </motion.span>
                     )}
                   </div>
                 </motion.button>
@@ -839,51 +1101,158 @@ export default function MobileVotingScreen() {
             })}
           </div>
 
-          {/* Vote Status Indicator */}
+          {/* Vote Confirmation Stamped Tag */}
           {hasVotedCurrent && (
             <div
               style={{
                 marginTop: '18px',
                 padding: '10px 14px',
-                borderRadius: 'var(--radius-md)',
-                background: 'rgba(16, 185, 129, 0.1)',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
+                border: '1px dashed #2B2B2B',
+                background: '#F4F1EA',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
-                color: '#34d399',
+                justifyContent: 'space-between',
+                color: '#2B2B2B',
                 fontSize: '0.85rem',
-                fontWeight: 600,
+                fontFamily: "'Special Elite', monospace",
               }}
             >
-              <CheckCircle2 size={16} />
-              <span>Your answer is recorded live on the presentation!</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="stamp-seal" style={{ fontSize: '0.7rem', padding: '1px 6px' }}>
+                  RECORDED
+                </span>
+                <span>Vote registered live on presentation</span>
+              </div>
+              <span style={{ fontFamily: "'Caveat', cursive", fontSize: '1.25rem', color: '#2563EB', fontWeight: 700 }}>
+                {voterName}
+              </span>
+            </div>
+          )}
+
+          {/* Active Question Live Results Chart Toggle */}
+          {hasVotedCurrent && (
+            <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setShowActiveQuestionChart((prev) => !prev)}
+                className="btn-secondary"
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  fontSize: '0.84rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  border: '1px solid #2563EB',
+                  color: '#2563EB',
+                  background: '#FAFAFA',
+                  boxShadow: '3px 3px 0px rgba(37, 99, 235, 0.15)',
+                }}
+              >
+                <BarChart2 size={15} color="#2563EB" />
+                {showActiveQuestionChart ? 'Hide Live Results Chart' : '📊 View Live Results Chart for this Question'}
+              </button>
+
+              {showActiveQuestionChart && (
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    padding: '14px',
+                    background: '#F4F1EA',
+                    border: '1px dashed #2B2B2B',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontSize: '0.78rem',
+                      color: '#555555',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      borderBottom: '1px dashed #2B2B2B',
+                      paddingBottom: '8px',
+                    }}
+                  >
+                    <span>Incoming Live Results ({currentQVotes} votes)</span>
+                    <span style={{ color: isConnected ? '#2563EB' : '#DC2626' }}>
+                      {isConnected ? '● Sync Active' : '○ Connecting...'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {currentQ?.options?.map((option, idx) => {
+                      const isLeader = option.votes > 0 && option.votes === currentHighestVotes;
+                      const isSelected = String(currentSelectedOptionId) === String(option.id);
+
+                      return (
+                        <div key={option.id || idx} style={{ position: 'relative' }}>
+                          <AnimatedBar
+                            option={option}
+                            totalVotes={currentQVotes}
+                            isLeader={isLeader}
+                            index={idx}
+                          />
+                          {isSelected && (
+                            <div
+                              style={{
+                                marginTop: '4px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '2px 8px',
+                                background: '#DBEAFE',
+                                border: '1px solid #2563EB',
+                                color: '#2563EB',
+                                fontSize: '0.74rem',
+                                fontWeight: 800,
+                                fontFamily: "'Special Elite', monospace",
+                              }}
+                            >
+                              <CheckCircle2 size={12} color="#2563EB" />
+                              <span>YOUR CURRENT CHOICE</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
             </div>
           )}
         </motion.div>
       </AnimatePresence>
 
-      {/* Question Navigation Controls (Previous / Next) */}
+      {/* Question Navigation Controls */}
       {questions.length > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginTop: '16px' }}>
           <button
             type="button"
             disabled={currentQuestionIndex === 0}
             onClick={() => setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))}
             className="btn-secondary"
             style={{
-              padding: '9px 16px',
-              fontSize: '0.88rem',
+              padding: isMobile ? '8px 12px' : '9px 16px',
+              fontSize: isMobile ? '0.82rem' : '0.88rem',
               gap: '6px',
-              opacity: currentQuestionIndex === 0 ? 0.4 : 1,
+              minHeight: '42px',
+              opacity: currentQuestionIndex === 0 ? 0.35 : 1,
             }}
           >
             <ChevronLeft size={16} />
-            Previous
+            <span>Prev</span>
           </button>
 
-          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            {currentQuestionIndex + 1} / {questions.length}
+          <span style={{ fontSize: isMobile ? '0.8rem' : '0.86rem', color: '#555555', fontFamily: "'Special Elite', monospace", textAlign: 'center' }}>
+            Question {currentQuestionIndex + 1} of {questions.length}
           </span>
 
           <button
@@ -892,39 +1261,21 @@ export default function MobileVotingScreen() {
             onClick={() => setCurrentQuestionIndex((prev) => Math.min(questions.length - 1, prev + 1))}
             className="btn-secondary"
             style={{
-              padding: '9px 16px',
-              fontSize: '0.88rem',
+              padding: isMobile ? '8px 12px' : '9px 16px',
+              fontSize: isMobile ? '0.82rem' : '0.88rem',
               gap: '6px',
-              opacity: currentQuestionIndex === questions.length - 1 ? 0.4 : 1,
+              minHeight: '42px',
+              opacity: currentQuestionIndex === questions.length - 1 ? 0.35 : 1,
             }}
           >
-            Next
+            <span>Next</span>
             <ChevronRight size={16} />
           </button>
         </div>
       )}
-
-      {/* Demo testing reset button */}
-      <div style={{ textAlign: 'center', marginTop: '30px' }}>
-        <button
-          type="button"
-          onClick={handleResetDeviceVotes}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-muted)',
-            fontSize: '0.74rem',
-            textDecoration: 'underline',
-            cursor: 'pointer',
-          }}
-        >
-          Reset device votes (Demo Testing)
-        </button>
-      </div>
     </div>
   );
 
-  // --- Render Layout ---
   return (
     <main
       style={{
@@ -940,18 +1291,24 @@ export default function MobileVotingScreen() {
       {!isMobile ? (
         // LAPTOP / DESKTOP KIOSK STATION LAYOUT
         <div className="kiosk-desktop-card">
-          <div>
-            {renderVotingControls()}
-          </div>
+          <div>{renderVotingControls()}</div>
 
-          {/* Desktop Sidebar: Session Details & Keyboard Shortcuts */}
+          {/* Desktop Sidebar: Session Details in Paper Style */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* Session Info Panel */}
-            <div className="glass-panel" style={{ padding: '22px 20px', borderRadius: '18px' }}>
+            <div
+              className="glass-panel"
+              style={{
+                background: '#FAFAFA',
+                border: '1px solid #2B2B2B',
+                boxShadow: '6px 6px 0px rgba(43, 43, 43, 0.15)',
+                padding: '22px 20px',
+              }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Hash size={16} color="var(--accent-primary)" />
-                  <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Polling Session</span>
+                  <Hash size={16} color="#2B2B2B" />
+                  <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#2B2B2B' }}>Session PIN</span>
                 </div>
                 <button
                   type="button"
@@ -963,27 +1320,28 @@ export default function MobileVotingScreen() {
                 </button>
               </div>
 
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                Session PIN: <strong style={{ color: 'var(--accent-cyan)' }}>{id}</strong>
+              <div style={{ fontSize: '0.86rem', color: '#555555', marginBottom: '8px' }}>
+                Session ID: <strong style={{ color: '#2B2B2B', fontFamily: 'monospace' }}>{id}</strong>
               </div>
 
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-                Voter Attribution: <strong style={{ color: '#fff' }}>{voterName || 'Audience Member'}</strong>
+              <div style={{ fontSize: '0.86rem', color: '#555555', marginBottom: '14px' }}>
+                Participant:{' '}
+                <strong style={{ fontFamily: "'Caveat', cursive", fontSize: '1.25rem', color: '#2563EB' }}>
+                  {voterName || 'Audience Member'}
+                </strong>
               </div>
 
-              <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.08)', margin: '12px 0' }} />
+              <div style={{ height: '1px', borderBottom: '1px dashed #2B2B2B', margin: '12px 0' }} />
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: isConnected ? '#10b981' : '#f59e0b', fontSize: '0.8rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#2B2B2B', fontSize: '0.8rem' }}>
                 <span
                   style={{
                     width: '8px',
                     height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: isConnected ? '#10b981' : '#f59e0b',
-                    boxShadow: isConnected ? '0 0 6px #10b981' : 'none',
+                    backgroundColor: isConnected ? '#2563EB' : '#DC2626',
                   }}
                 />
-                <span>{isConnected ? 'Real-Time Sync Active' : 'Connecting to Redis...'}</span>
+                <span>{isConnected ? 'Real-Time Sync Active' : 'Connecting to Server...'}</span>
               </div>
             </div>
 
@@ -991,21 +1349,21 @@ export default function MobileVotingScreen() {
             <div
               className="glass-panel"
               style={{
+                background: '#FAFAFA',
+                border: '1px solid #2B2B2B',
+                boxShadow: '6px 6px 0px rgba(43, 43, 43, 0.15)',
                 padding: '20px',
-                borderRadius: '18px',
-                background: 'rgba(72, 229, 194, 0.04)',
-                border: '1px solid rgba(72, 229, 194, 0.2)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                <Keyboard size={16} color="var(--accent-primary)" />
-                <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--accent-primary)' }}>
-                  Desktop Keyboard Controls
+                <Keyboard size={16} color="#2B2B2B" />
+                <span style={{ fontSize: '0.88rem', fontWeight: 800, color: '#2B2B2B' }}>
+                  Keyboard Shortcuts
                 </span>
               </div>
-              <ul style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6, paddingLeft: '18px', margin: 0 }}>
-                <li>Press <strong>[1]</strong>, <strong>[2]</strong>, <strong>[3]</strong>, or <strong>[4]</strong> to cast vote</li>
-                <li>Press <strong>[←]</strong> or <strong>[→]</strong> arrow keys to switch questions</li>
+              <ul style={{ fontSize: '0.82rem', color: '#555555', lineHeight: 1.6, paddingLeft: '18px', margin: 0 }}>
+                <li>Press <strong>[1]</strong>, <strong>[2]</strong>, <strong>[3]</strong>, or <strong>[4]</strong> to vote</li>
+                <li>Press <strong>[←]</strong> or <strong>[→]</strong> keys to navigate questions</li>
               </ul>
             </div>
 
@@ -1022,13 +1380,12 @@ export default function MobileVotingScreen() {
                 fontSize: '0.88rem',
               }}
             >
-              <Monitor size={15} color="var(--accent-primary)" />
+              <Monitor size={15} color="#2B2B2B" />
               <span>Open Projector View</span>
             </Link>
           </div>
         </div>
       ) : (
-        // MOBILE APP VOTING LAYOUT
         renderVotingControls()
       )}
     </main>

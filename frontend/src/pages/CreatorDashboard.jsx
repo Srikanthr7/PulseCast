@@ -20,43 +20,35 @@ import {
   Coffee,
   Smartphone,
   Layers,
-  Radio,
   Copy,
-  ExternalLink,
 } from 'lucide-react';
 import { createPoll, login, signup, googleAuth, getUser, getToken, clearAuth, getMyPolls, deletePoll } from '../api';
 import { useDeviceType } from '../hooks/useDeviceType';
+import LandingInfo from '../components/LandingInfo';
 
-const PALETTE = ['#48E5C2', '#F3D3BD', '#FCFAF9', '#5E5E5E'];
-
-const isLightColor = (hex) => {
-  if (!hex) return true;
-  const h = hex.toLowerCase();
-  if (h === '#5e5e5e' || h === '#ef4444' || h === '#333333' || h === '#2b2b2b' || h === '#444444') return false;
-  return true;
-};
+const PALETTE = ['#2B2B2B', '#2563EB', '#DC2626', '#555555'];
 
 const MULTI_QUESTION_TEMPLATES = [
   {
-    name: 'Full-Stack Tech Sprint (2 Questions)',
+    name: 'Tech Sprint Poll (2 Questions)',
     title: 'PulseCast Tech Sprint 2026',
     icon: Rocket,
     questions: [
       {
         title: 'Which modern tech stack layer are you most excited to master in 2026?',
         options: [
-          { text: 'Go (Gin) + Redis Engine', color: '#48E5C2' },
-          { text: 'React 19 + Framer Motion UI', color: '#F3D3BD' },
-          { text: 'MongoDB Document Aggregation', color: '#5E5E5E' },
-          { text: 'WebSockets Real-time Streaming', color: '#FCFAF9' },
+          { text: 'Go (Gin) + Redis Engine', color: '#2B2B2B' },
+          { text: 'React + Framer Motion UI', color: '#2563EB' },
+          { text: 'MongoDB Document Aggregation', color: '#DC2626' },
+          { text: 'WebSockets Real-time Streaming', color: '#555555' },
         ],
       },
       {
         title: 'How do you prefer collaborating on distributed systems?',
         options: [
-          { text: 'Pair programming & real-time sessions', color: '#48E5C2' },
-          { text: 'Async brainstorms & thorough RFCs', color: '#F3D3BD' },
-          { text: 'Deep uninterrupted solo focus', color: '#5E5E5E' },
+          { text: 'Pair programming & real-time sessions', color: '#2B2B2B' },
+          { text: 'Async brainstorms & thorough RFCs', color: '#2563EB' },
+          { text: 'Deep uninterrupted solo focus', color: '#DC2626' },
         ],
       },
     ],
@@ -69,57 +61,56 @@ const MULTI_QUESTION_TEMPLATES = [
       {
         title: 'How confident are you in our current release pipeline?',
         options: [
-          { text: '100% Solid - Zero concerns', color: '#48E5C2' },
-          { text: 'Good - Minor bottlenecks', color: '#F3D3BD' },
-          { text: 'Needs Improvement', color: '#5E5E5E' },
-          { text: 'High Risk - Needs urgent fix', color: '#ef4444' },
+          { text: '100% Solid - Zero concerns', color: '#2563EB' },
+          { text: 'Good - Minor bottlenecks', color: '#2B2B2B' },
+          { text: 'Needs Improvement', color: '#DC2626' },
+          { text: 'High Risk - Needs urgent fix', color: '#555555' },
         ],
       },
       {
         title: "What should be our team's primary focus for next sprint?",
         options: [
-          { text: 'Frontend UX polish & micro-animations', color: '#48E5C2' },
-          { text: 'Backend latency & database indexing', color: '#F3D3BD' },
-          { text: 'Automated end-to-end test coverage', color: '#5E5E5E' },
+          { text: 'Frontend UX polish & micro-animations', color: '#2B2B2B' },
+          { text: 'Backend latency & database indexing', color: '#2563EB' },
+          { text: 'Automated end-to-end test coverage', color: '#DC2626' },
         ],
       },
     ],
   },
   {
-    name: 'Quick Architecture Pulse (1 Question)',
+    name: 'Architecture Pulse (1 Question)',
     title: 'Architecture Decision Poll',
     icon: Zap,
     questions: [
       {
         title: 'Do you approve migrating to Redis Pub/Sub for live presentation syncing?',
         options: [
-          { text: 'Yes, absolutely approved', color: '#48E5C2' },
-          { text: 'No, needs further architectural review', color: '#5E5E5E' },
-          { text: 'Undecided / Need more benchmarks', color: '#F3D3BD' },
+          { text: 'Yes, absolutely approved', color: '#2563EB' },
+          { text: 'No, needs further architectural review', color: '#DC2626' },
+          { text: 'Undecided / Need more benchmarks', color: '#2B2B2B' },
         ],
       },
     ],
   },
   {
-    name: 'Team Social Icebreaker (2 Questions)',
-    title: 'Team Social & Icebreaker',
+    name: 'Team Standup Check (2 Questions)',
+    title: 'Daily Standup Pulse',
     icon: Coffee,
     questions: [
       {
-        title: 'What fuels your best engineering focus sessions?',
+        title: "What is your energy level heading into today's sprint?",
         options: [
-          { text: 'Fresh dark roast espresso', color: '#F3D3BD' },
-          { text: 'Lo-Fi / Synthwave music', color: '#48E5C2' },
-          { text: 'Late night quiet hours', color: '#5E5E5E' },
-          { text: 'Chilled iced water or green tea', color: '#FCFAF9' },
+          { text: 'Fully Charged & Ready', color: '#2563EB' },
+          { text: 'Steady & Focused', color: '#2B2B2B' },
+          { text: 'Need more coffee first', color: '#DC2626' },
         ],
       },
       {
-        title: 'Choose your software engineering superpower:',
+        title: 'What would make today a massive win for you?',
         options: [
-          { text: 'Zero bugs on initial release', color: '#48E5C2' },
-          { text: 'Read and understand any legacy codebase in minutes', color: '#F3D3BD' },
-          { text: 'Flawless distributed system architecture design', color: '#5E5E5E' },
+          { text: 'Zero bugs on initial release', color: '#2563EB' },
+          { text: 'Merging my core pull request', color: '#2B2B2B' },
+          { text: 'Learning something completely new', color: '#DC2626' },
         ],
       },
     ],
@@ -139,12 +130,12 @@ export default function CreatorDashboard() {
   const [authError, setAuthError] = useState(null);
   const [joinSessionInput, setJoinSessionInput] = useState('');
 
-  const { isMobile, isLaptop } = useDeviceType();
+  const { isMobile } = useDeviceType();
   const [mobileTab, setMobileTab] = useState('builder'); // 'builder' | 'sessions' | 'join'
 
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-  // Handle Google OAuth ID token response from GIS
+  // Handle Google OAuth ID token response
   const handleGoogleSuccess = async (response) => {
     if (!response || !response.credential) {
       setAuthError('Google sign in did not return valid credentials. Please try again.');
@@ -181,7 +172,6 @@ export default function CreatorDashboard() {
           const btnEl = document.getElementById('google-signin-btn-container');
           if (btnEl) {
             btnEl.innerHTML = '';
-            // Determine button width dynamically based on viewport/container so it NEVER overflows mobile screens
             const containerWidth = btnEl.parentElement?.clientWidth || window.innerWidth || 360;
             const targetWidth = Math.min(Math.max(Math.floor(containerWidth - 16), 220), 380);
             window.google.accounts.id.renderButton(btnEl, {
@@ -219,7 +209,7 @@ export default function CreatorDashboard() {
     };
   }, [currentUser, googleClientId, authMode]);
 
-  // Multi-Question Poll State (Clean blank state - presets available on demand)
+  // Multi-Question Poll State
   const [pollTitle, setPollTitle] = useState('');
   const [questions, setQuestions] = useState([
     {
@@ -294,7 +284,7 @@ export default function CreatorDashboard() {
   const [deletingPollId, setDeletingPollId] = useState(null);
 
   const handleDeletePoll = async (pollId) => {
-    if (!window.confirm('Are you sure you want to delete this polling session? This action cannot be undone.')) {
+    if (!window.confirm('Are you sure you want to permanently delete this polling session? This action cannot be undone.')) {
       return;
     }
     setDeletingPollId(pollId);
@@ -326,9 +316,9 @@ export default function CreatorDashboard() {
   const renderPollSessionsList = (isSidebar = false) => {
     if (loadingPolls && myPolls.length === 0) {
       return (
-        <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px', color: 'var(--accent-primary)' }} />
-          <p style={{ fontSize: '0.86rem' }}>Loading sessions...</p>
+        <div style={{ padding: '24px', textAlign: 'center', color: '#555555' }}>
+          <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px', color: '#2B2B2B' }} />
+          <p style={{ fontSize: '0.86rem', fontFamily: "'Special Elite', monospace" }}>Loading sessions...</p>
         </div>
       );
     }
@@ -336,8 +326,8 @@ export default function CreatorDashboard() {
     if (myPolls.length === 0) {
       return (
         <div className="glass-panel" style={{ padding: isSidebar ? '22px 18px' : '32px', textAlign: 'center' }}>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-            You haven't created any polls yet. Design your first multi-question poll session!
+          <p style={{ color: '#555555', fontSize: '0.88rem', fontFamily: "'Special Elite', monospace" }}>
+            No polling sessions recorded yet. Fill out the form above to launch your first session!
           </p>
         </div>
       );
@@ -354,26 +344,28 @@ export default function CreatorDashboard() {
               key={p.id}
               className="glass-panel"
               style={{
+                background: '#FAFAFA',
+                border: '1px solid #2B2B2B',
+                boxShadow: '4px 4px 0px rgba(43, 43, 43, 0.15)',
                 padding: isSidebar ? '14px 16px' : '18px 20px',
                 display: 'flex',
                 flexDirection: isSidebar ? 'column' : 'row',
                 alignItems: isSidebar ? 'stretch' : 'center',
                 justifyContent: 'space-between',
                 gap: '12px',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
               }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', flexWrap: 'wrap' }}>
                   <span
                     style={{
-                      fontSize: '0.7rem',
-                      color: 'var(--accent-cyan)',
-                      background: 'rgba(72, 229, 194, 0.12)',
-                      border: '1px solid rgba(72, 229, 194, 0.3)',
+                      fontSize: '0.72rem',
+                      color: '#2B2B2B',
+                      background: '#F4F1EA',
+                      border: '1px solid #2B2B2B',
                       padding: '2px 7px',
-                      borderRadius: '6px',
-                      fontWeight: 600,
+                      fontWeight: 700,
+                      fontFamily: 'monospace',
                     }}
                   >
                     PIN: {p.id.slice(0, 8)}...
@@ -381,27 +373,28 @@ export default function CreatorDashboard() {
                   <span
                     style={{
                       fontSize: '0.7rem',
-                      color: p.status === 'completed' ? '#F3D3BD' : '#48E5C2',
-                      background: p.status === 'completed' ? 'rgba(243, 211, 189, 0.12)' : 'rgba(72, 229, 194, 0.12)',
-                      border: `1px solid ${p.status === 'completed' ? 'rgba(243, 211, 189, 0.3)' : 'rgba(72, 229, 194, 0.3)'}`,
+                      color: p.status === 'completed' ? '#DC2626' : '#2B2B2B',
+                      background: p.status === 'completed' ? 'rgba(220, 38, 38, 0.1)' : '#F4F1EA',
+                      border: `1px solid ${p.status === 'completed' ? '#DC2626' : '#2B2B2B'}`,
                       padding: '2px 7px',
-                      borderRadius: '6px',
-                      fontWeight: 700,
+                      fontWeight: 800,
                       textTransform: 'uppercase',
                     }}
                   >
                     {p.status === 'completed' ? 'Ended' : 'Live'}
                   </span>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  <span style={{ fontSize: '0.74rem', color: '#555555' }}>
                     {qCount}Q &bull; {p.total_votes || 0} votes
                   </span>
                 </div>
                 <h4 style={{
                   fontSize: isSidebar ? '0.96rem' : '1.08rem',
-                  color: 'var(--text-primary)',
+                  color: '#2B2B2B',
+                  fontWeight: 800,
                   marginBottom: '4px',
                   lineHeight: 1.35,
                   wordBreak: 'break-word',
+                  fontFamily: "'Special Elite', monospace",
                 }}>
                   {displayTitle}
                 </h4>
@@ -419,7 +412,7 @@ export default function CreatorDashboard() {
                     justifyContent: 'center',
                   }}
                 >
-                  <Play size={13} fill="#000000" />
+                  <Play size={13} fill="#FAFAFA" />
                   Project
                 </Link>
                 <button
@@ -430,8 +423,7 @@ export default function CreatorDashboard() {
                     padding: isSidebar ? '7px 10px' : '8px 12px',
                     fontSize: isSidebar ? '0.8rem' : '0.85rem',
                     gap: '5px',
-                    color: isCopied ? '#10b981' : 'var(--text-secondary)',
-                    borderColor: isCopied ? '#10b981' : 'var(--border-subtle)',
+                    color: isCopied ? '#2563EB' : '#2B2B2B',
                   }}
                   title="Copy direct voting link to clipboard"
                 >
@@ -446,14 +438,13 @@ export default function CreatorDashboard() {
                   style={{
                     padding: isSidebar ? '7px 10px' : '8px 12px',
                     fontSize: isSidebar ? '0.8rem' : '0.85rem',
-                    color: '#ff6b6b',
-                    borderColor: 'rgba(255, 107, 107, 0.3)',
-                    background: 'rgba(255, 107, 107, 0.06)',
+                    color: '#DC2626',
+                    borderColor: '#DC2626',
                   }}
-                  title="Delete session"
+                  title="Delete this session"
                 >
                   {deletingPollId === p.id ? (
-                    <Loader2 size={13} className="animate-spin" />
+                    <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
                   ) : (
                     <Trash2 size={13} />
                   )}
@@ -466,8 +457,7 @@ export default function CreatorDashboard() {
     );
   };
 
-  // --- Multi-Question Form Handlers ---
-
+  // Multi-Question Form Handlers
   const handleAddQuestion = () => {
     const newId = Date.now();
     setQuestions([
@@ -494,7 +484,6 @@ export default function CreatorDashboard() {
     setQuestions(updated);
   };
 
-  // Dynamic Options per Question (min 2, max 4 options strictly enforced)
   const handleAddOption = (qIndex) => {
     const q = questions[qIndex];
     if (q.options.length >= 4) return;
@@ -549,19 +538,16 @@ export default function CreatorDashboard() {
     if (e && e.preventDefault) e.preventDefault();
     setErrorMessage(null);
 
-    // Filter out completely blank trailing questions if user clicked "Add Question" but left it empty
     const nonBlankQuestions = questions.filter(
       (q) => q.title.trim() !== '' || q.options.some((opt) => opt.text.trim() !== '')
     );
     const questionsToSubmit = nonBlankQuestions.length > 0 ? nonBlankQuestions : questions;
 
-    // Validate overall poll
     if (questionsToSubmit.length === 0 || !questionsToSubmit[0].title.trim()) {
       setErrorMessage('Please enter at least one question prompt to launch your poll session.');
       return;
     }
 
-    // Validate each question and choices
     for (let i = 0; i < questionsToSubmit.length; i++) {
       const q = questionsToSubmit[i];
       const trimmedTitle = q.title.trim();
@@ -586,13 +572,11 @@ export default function CreatorDashboard() {
     const firstQ = questionsToSubmit[0];
     const payload = {
       title: pollTitle.trim() || firstQ.title.trim(),
-      // Top-level fallbacks for backward compatibility with older Go backend compile
       question: firstQ.title.trim(),
       options: firstQ.options.map((opt, i) => ({
         text: opt.text.trim() || `Option ${i + 1}`,
         color: opt.color || PALETTE[i % PALETTE.length],
       })),
-      // Multi-question payload for Phase 6
       questions: questionsToSubmit.map((q) => ({
         title: q.title.trim(),
         options: q.options.map((opt, i) => ({
@@ -604,10 +588,7 @@ export default function CreatorDashboard() {
 
     setIsSubmitting(true);
     try {
-      console.log('Submitting poll payload:', payload);
-      // POST /api/polls with Bearer JWT token
       const newPoll = await createPoll(payload);
-      console.log('Poll created successfully:', newPoll);
       const pollId = newPoll.id || newPoll._id;
 
       if (!pollId) {
@@ -616,13 +597,8 @@ export default function CreatorDashboard() {
 
       setCreatedPoll(newPoll);
       localStorage.setItem('pulsecast_latest_poll_id', pollId);
-
       loadMyPolls();
-
-      // Reset builder form so that returning to dashboard gives a clean blank session
       handleResetForm();
-
-      // Navigate to presentation view
       navigate(`/present/${pollId}`);
     } catch (err) {
       console.error('Failed to create poll session:', err);
@@ -637,334 +613,15 @@ export default function CreatorDashboard() {
     }
   };
 
-  // --- Render Unauthenticated State: Login / Sign Up Card ---
-  if (!currentUser) {
-    return (
-      <main
-        style={{
-          maxWidth: '460px',
-          margin: isMobile ? '20px auto 90px' : '50px auto',
-          padding: isMobile ? '0 14px' : '0 20px',
-          width: '100%',
-          position: 'relative',
-        }}
-      >
-        {/* Ambient Specular Halo behind card */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '25%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: isMobile ? '240px' : '320px',
-            height: isMobile ? '240px' : '320px',
-            background: 'radial-gradient(circle, rgba(72, 229, 194, 0.12) 0%, rgba(99, 102, 241, 0.08) 50%, transparent 70%)',
-            borderRadius: '50%',
-            filter: 'blur(60px)',
-            pointerEvents: 'none',
-            zIndex: 0,
-          }}
-        />
-
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ textAlign: 'center', marginBottom: isMobile ? '20px' : '28px' }}>
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '5px 14px',
-                borderRadius: 'var(--radius-full)',
-                background: 'rgba(72, 229, 194, 0.08)',
-                border: '1px solid rgba(72, 229, 194, 0.25)',
-                color: 'var(--accent-primary)',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                letterSpacing: '0.04em',
-                marginBottom: '16px',
-              }}
-            >
-              <ShieldCheck size={14} />
-              Creator Authentication
-            </div>
-            <h1 style={{ fontSize: isMobile ? '1.85rem' : '2.3rem', marginBottom: '8px', letterSpacing: '-0.03em' }}>
-              Creator <span className="gradient-text">Portal</span>
-            </h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: isMobile ? '0.85rem' : '0.92rem', lineHeight: 1.5 }}>
-              Sign in or create an account to design interactive multi-question polls with instant real-time presentations.
-            </p>
-          </div>
-
-          {/* Auth Card with True Translucent Glass */}
-          <div className="glass-panel" style={{ padding: isMobile ? '24px 18px' : '32px 28px' }}>
-            {/* Segmented Tab Switcher */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                background: 'rgba(0, 0, 0, 0.4)',
-                border: '1px solid rgba(255, 255, 255, 0.06)',
-                borderRadius: '12px',
-                padding: '4px',
-                marginBottom: '24px',
-                gap: '4px',
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMode('login');
-                  setAuthError(null);
-                }}
-                style={{
-                  padding: '9px',
-                  border: 'none',
-                  borderRadius: '9px',
-                  background: authMode === 'login' ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'transparent',
-                  color: authMode === 'login' ? '#000000' : 'var(--text-secondary)',
-                  fontWeight: authMode === 'login' ? 700 : 500,
-                  fontSize: '0.88rem',
-                  cursor: 'pointer',
-                  boxShadow: authMode === 'login' ? '0 2px 10px rgba(72, 229, 194, 0.35)' : 'none',
-                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                }}
-              >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMode('signup');
-                  setAuthError(null);
-                }}
-                style={{
-                  padding: '9px',
-                  border: 'none',
-                  borderRadius: '9px',
-                  background: authMode === 'signup' ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'transparent',
-                  color: authMode === 'signup' ? '#000000' : 'var(--text-secondary)',
-                  fontWeight: authMode === 'signup' ? 700 : 500,
-                  fontSize: '0.88rem',
-                  cursor: 'pointer',
-                  boxShadow: authMode === 'signup' ? '0 2px 10px rgba(72, 229, 194, 0.35)' : 'none',
-                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                }}
-              >
-                Create Account
-              </button>
-            </div>
-
-            {authError && (
-              <div
-                style={{
-                  background: 'rgba(244, 63, 94, 0.12)',
-                  border: '1px solid rgba(244, 63, 94, 0.3)',
-                  borderRadius: '12px',
-                  padding: '12px 14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  color: '#fda4af',
-                  fontSize: '0.86rem',
-                  marginBottom: '20px',
-                }}
-              >
-                <AlertCircle size={17} color="#f43f5e" flexShrink={0} />
-                <span>{authError}</span>
-              </div>
-            )}
-
-            {/* Google OAuth Login Option */}
-            <div style={{ marginBottom: '18px' }}>
-              <div
-                id="google-signin-btn-container"
-                style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  width: '100%',
-                  minHeight: '44px',
-                }}
-              >
-                {/* Fallback button: triggers Google prompt or shows clear configuration instructions */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.google?.accounts?.id && googleClientId) {
-                      window.google.accounts.id.prompt();
-                    } else if (!googleClientId) {
-                      setAuthError('Google Client ID is not configured yet. Set VITE_GOOGLE_CLIENT_ID in frontend/.env to enable Google OAuth.');
-                    } else {
-                      setAuthError('Google Identity Services is initializing. Please wait a moment and try again.');
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '12px',
-                    padding: '11px 18px',
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    borderRadius: '10px',
-                    color: '#ffffff',
-                    fontSize: '0.9rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                  }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                    />
-                  </svg>
-                  <span>Continue with Google</span>
-                </button>
-              </div>
-
-              {/* Clean Divider */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  margin: '18px 0 6px 0',
-                  gap: '12px',
-                }}
-              >
-                <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.1)' }} />
-                <span
-                  style={{
-                    fontSize: '0.74rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
-                    color: 'var(--text-muted)',
-                    fontWeight: 600,
-                  }}
-                >
-                  Or continue with email
-                </span>
-                <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.1)' }} />
-              </div>
-            </div>
-
-            <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {authMode === 'signup' && (
-                <div>
-                  <label
-                    style={{
-                      display: 'block',
-                      fontSize: '0.82rem',
-                      fontWeight: 600,
-                      marginBottom: '6px',
-                      color: 'var(--text-secondary)',
-                      letterSpacing: '0.02em',
-                    }}
-                  >
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    className="input-field"
-                    placeholder="e.g. Srikanth"
-                    value={authName}
-                    onChange={(e) => setAuthName(e.target.value)}
-                    required
-                  />
-                </div>
-              )}
-
-              <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
-                    marginBottom: '6px',
-                    color: 'var(--text-secondary)',
-                    letterSpacing: '0.02em',
-                  }}
-                >
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  className="input-field"
-                  placeholder="creator@pulsecast.dev"
-                  value={authEmail}
-                  onChange={(e) => setAuthEmail(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
-                    marginBottom: '6px',
-                    color: 'var(--text-secondary)',
-                    letterSpacing: '0.02em',
-                  }}
-                >
-                  Password (min 6 characters)
-                </label>
-                <input
-                  type="password"
-                  className="input-field"
-                  placeholder="••••••••"
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                  required
-                  minLength={6}
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="btn-primary"
-                disabled={authLoading}
-                style={{ width: '100%', justifyContent: 'center', marginTop: '6px', padding: '13px' }}
-              >
-                {authLoading ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : authMode === 'signup' ? (
-                  'Create Creator Account'
-                ) : (
-                  'Sign In & Access Dashboard'
-                )}
-              </button>
-            </form>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  // --- Render Sub-Components for Laptop & Mobile Layouts ---
-
+  // Audience Quick Join Sub-Component
   const renderQuickJoinCard = () => (
     <div
       className="glass-panel"
       style={{
         padding: isMobile ? '18px 16px' : '20px 22px',
-        borderRadius: '16px',
-        border: '1px solid rgba(72, 229, 194, 0.25)',
-        background: 'linear-gradient(135deg, rgba(72, 229, 194, 0.06) 0%, rgba(11, 15, 25, 0.6) 100%)',
+        background: '#FAFAFA',
+        border: '1px solid #2B2B2B',
+        boxShadow: '4px 4px 0px rgba(43, 43, 43, 0.15)',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
@@ -972,23 +629,22 @@ export default function CreatorDashboard() {
           style={{
             width: '36px',
             height: '36px',
-            borderRadius: '10px',
-            background: 'rgba(72, 229, 194, 0.15)',
+            background: '#2B2B2B',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'var(--accent-primary)',
+            color: '#FAFAFA',
             flexShrink: 0,
           }}
         >
           <Smartphone size={18} />
         </div>
         <div>
-          <h3 style={{ fontSize: '0.98rem', fontWeight: 700, color: '#FCFAF9', marginBottom: '2px' }}>
+          <h3 style={{ fontSize: '0.98rem', fontWeight: 800, color: '#2B2B2B', marginBottom: '2px', fontFamily: "'Special Elite', monospace" }}>
             Audience Quick Join
           </h3>
-          <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-            Enter presenter's Session PIN to vote:
+          <p style={{ fontSize: '0.78rem', color: '#555555' }}>
+            Enter presenter's session PIN to vote:
           </p>
         </div>
       </div>
@@ -1023,25 +679,277 @@ export default function CreatorDashboard() {
     </div>
   );
 
+  // Auth Card Sub-Component for Landing Page
+  const renderAuthCard = () => (
+    <div
+      className="glass-panel"
+      style={{
+        background: '#FAFAFA',
+        border: '2px solid #2B2B2B',
+        boxShadow: '8px 8px 0px rgba(43, 43, 43, 0.2)',
+        padding: isMobile ? '24px 18px' : '32px 26px',
+        position: 'relative',
+      }}
+    >
+      <div style={{ textAlign: 'center', marginBottom: '22px' }}>
+        <div className="stamp-seal" style={{ marginBottom: '12px' }}>
+          CREATOR &amp; HOST PORTAL
+        </div>
+        <h2 style={{ fontSize: isMobile ? '1.8rem' : '2.1rem', marginBottom: '8px', color: '#2B2B2B', fontFamily: "'Special Elite', monospace" }}>
+          Host Portal &amp; Studio
+        </h2>
+        <p style={{ color: '#555555', fontSize: '0.88rem', lineHeight: 1.45 }}>
+          Sign in or register your host account to design and present interactive multi-question polls.
+        </p>
+      </div>
+
+      {/* Segmented Tab Switcher */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          background: '#F4F1EA',
+          border: '1px solid #2B2B2B',
+          padding: '2px',
+          marginBottom: '20px',
+          gap: '2px',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => {
+            setAuthMode('login');
+            setAuthError(null);
+          }}
+          style={{
+            padding: '9px',
+            border: authMode === 'login' ? '1px solid #2B2B2B' : 'none',
+            background: authMode === 'login' ? '#2B2B2B' : 'transparent',
+            color: authMode === 'login' ? '#FAFAFA' : '#2B2B2B',
+            fontWeight: 800,
+            fontSize: '0.88rem',
+            cursor: 'pointer',
+            fontFamily: "'Special Elite', monospace",
+          }}
+        >
+          Sign In
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setAuthMode('signup');
+            setAuthError(null);
+          }}
+          style={{
+            padding: '9px',
+            border: authMode === 'signup' ? '1px solid #2B2B2B' : 'none',
+            background: authMode === 'signup' ? '#2B2B2B' : 'transparent',
+            color: authMode === 'signup' ? '#FAFAFA' : '#2B2B2B',
+            fontWeight: 800,
+            fontSize: '0.88rem',
+            cursor: 'pointer',
+            fontFamily: "'Special Elite', monospace",
+          }}
+        >
+          Create Account
+        </button>
+      </div>
+
+      {authError && (
+        <div
+          style={{
+            background: 'rgba(220, 38, 38, 0.08)',
+            border: '1px solid #DC2626',
+            padding: '10px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            color: '#DC2626',
+            fontSize: '0.86rem',
+            marginBottom: '18px',
+            fontFamily: "'Special Elite', monospace",
+          }}
+        >
+          <AlertCircle size={17} color="#DC2626" flexShrink={0} />
+          <span>{authError}</span>
+        </div>
+      )}
+
+      {/* Google OAuth Login Option */}
+      <div style={{ marginBottom: '18px' }}>
+        <div
+          id="google-signin-btn-container"
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            width: '100%',
+            minHeight: '44px',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              if (window.google?.accounts?.id && googleClientId) {
+                window.google.accounts.id.prompt();
+              } else if (!googleClientId) {
+                setAuthError('Google Client ID is not configured yet. Set VITE_GOOGLE_CLIENT_ID in frontend/.env.');
+              } else {
+                setAuthError('Google Identity Services is initializing. Please try again.');
+              }
+            }}
+            className="btn-secondary"
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              padding: '11px',
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+              />
+            </svg>
+            <span>Continue with Google</span>
+          </button>
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            margin: '16px 0 6px 0',
+            gap: '12px',
+          }}
+        >
+          <div style={{ flex: 1, borderBottom: '1px dashed #2B2B2B' }} />
+          <span style={{ fontSize: '0.74rem', color: '#555555', fontFamily: "'Special Elite', monospace" }}>
+            Or sign in with email
+          </span>
+          <div style={{ flex: 1, borderBottom: '1px dashed #2B2B2B' }} />
+        </div>
+      </div>
+
+      <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        {authMode === 'signup' && (
+          <div>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, marginBottom: '5px', color: '#2B2B2B' }}>
+              Full Name
+            </label>
+            <input
+              type="text"
+              className="input-field"
+              placeholder="e.g. Alex, Sarah, Prof. Miller"
+              value={authName}
+              onChange={(e) => setAuthName(e.target.value)}
+              required
+            />
+          </div>
+        )}
+
+        <div>
+          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, marginBottom: '5px', color: '#2B2B2B' }}>
+            Email Address
+          </label>
+          <input
+            type="email"
+            className="input-field"
+            placeholder="host@pulsecast.dev"
+            value={authEmail}
+            onChange={(e) => setAuthEmail(e.target.value)}
+            required
+          />
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, marginBottom: '5px', color: '#2B2B2B' }}>
+            Password (min 6 characters)
+          </label>
+          <input
+            type="password"
+            className="input-field"
+            placeholder="••••••••"
+            value={authPassword}
+            onChange={(e) => setAuthPassword(e.target.value)}
+            required
+            minLength={6}
+          />
+        </div>
+
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={authLoading}
+          style={{ width: '100%', justifyContent: 'center', marginTop: '6px', padding: '12px' }}
+        >
+          {authLoading ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : authMode === 'signup' ? (
+            'Create Host Account'
+          ) : (
+            'Sign In & Access Studio'
+          )}
+        </button>
+      </form>
+    </div>
+  );
+
+  // Unauthenticated Landing Page State
+  if (!currentUser) {
+    return (
+      <main style={{ width: '100%', minHeight: '100vh', padding: isMobile ? '12px 0 80px' : '24px 0 60px' }}>
+        <LandingInfo
+          authComponent={renderAuthCard()}
+          quickJoinComponent={renderQuickJoinCard()}
+          onScrollToAuth={() => {
+            const el = document.getElementById('auth-portal-section');
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth' });
+            }
+          }}
+        />
+      </main>
+    );
+  }
+
   const renderBuilderContent = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
       {/* Success Notification */}
       {createdPoll && (
         <div
-          className="glass-panel-glow"
+          className="glass-panel"
           style={{
             padding: '20px',
-            borderRadius: 'var(--radius-md)',
-            background: 'rgba(16, 185, 129, 0.08)',
-            border: '1px solid rgba(16, 185, 129, 0.3)',
+            background: '#F4F1EA',
+            border: '2px solid #2B2B2B',
+            boxShadow: '6px 6px 0px rgba(43, 43, 43, 0.2)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', color: '#10b981' }}>
-            <CheckCircle2 size={20} />
-            <h3 style={{ fontSize: '1.1rem', color: '#ffffff' }}>Your Polling Session Is Live!</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+            <span className="stamp-seal" style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
+              POLL LIVE
+            </span>
+            <h3 style={{ fontSize: '1.15rem', color: '#2B2B2B', fontFamily: "'Special Elite', monospace" }}>
+              Your Polling Session Is Live!
+            </h3>
           </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '14px' }}>
-            Session ID: <strong style={{ color: 'var(--text-primary)' }}>{createdPoll.id}</strong> ({createdPoll.questions?.length || 1} questions).
+          <p style={{ color: '#555555', fontSize: '0.88rem', marginBottom: '14px' }}>
+            Session ID: <strong style={{ color: '#2B2B2B', fontFamily: 'monospace' }}>{createdPoll.id}</strong> ({createdPoll.questions?.length || 1} questions).
           </p>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button
@@ -1050,7 +958,7 @@ export default function CreatorDashboard() {
               onClick={() => navigate(`/present/${createdPoll.id}`)}
               style={{ gap: '8px', padding: '9px 16px', fontSize: '0.88rem' }}
             >
-              <Play size={15} fill="#000000" />
+              <Play size={15} fill="#FAFAFA" />
               Open Projector View
             </button>
             <button
@@ -1069,7 +977,7 @@ export default function CreatorDashboard() {
                 handleResetForm();
               }}
               className="btn-secondary"
-              style={{ gap: '6px', padding: '9px 14px', fontSize: '0.88rem', color: 'var(--accent-primary)', borderColor: 'rgba(72, 229, 194, 0.35)' }}
+              style={{ gap: '6px', padding: '9px 14px', fontSize: '0.88rem' }}
             >
               <Plus size={15} />
               Start New Polling Session
@@ -1078,12 +986,12 @@ export default function CreatorDashboard() {
         </div>
       )}
 
-      {/* Quick Polling Templates & Clear Toolbar */}
+      {/* Preset Polls Toolbar */}
       <div
+        className="horizontal-scroll-touch"
         style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: isMobile ? 'flex-start' : 'flex-start',
           gap: '8px',
           overflowX: isMobile ? 'auto' : 'visible',
           paddingBottom: isMobile ? '6px' : '0',
@@ -1094,16 +1002,17 @@ export default function CreatorDashboard() {
         <span
           style={{
             fontSize: '0.82rem',
-            color: 'var(--accent-cyan)',
-            fontWeight: 600,
+            color: '#2B2B2B',
+            fontWeight: 800,
             display: 'inline-flex',
             alignItems: 'center',
             gap: '5px',
             flexShrink: 0,
+            fontFamily: "'Special Elite', monospace",
           }}
         >
-          <Sparkles size={14} />
-          Presets:
+          <Sparkles size={14} color="#DC2626" />
+          Poll Presets:
         </span>
         {MULTI_QUESTION_TEMPLATES.map((tmpl, idx) => {
           const isSelected = pollTitle === (tmpl.title || tmpl.name);
@@ -1117,13 +1026,10 @@ export default function CreatorDashboard() {
               style={{
                 fontSize: '0.8rem',
                 padding: '6px 12px',
-                borderRadius: '10px',
-                background: isSelected ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'rgba(255, 255, 255, 0.04)',
-                border: isSelected ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid rgba(255, 255, 255, 0.08)',
-                color: isSelected ? '#000000' : '#F8FAFC',
-                fontWeight: isSelected ? 700 : 500,
+                background: isSelected ? '#2B2B2B' : '#FAFAFA',
+                color: isSelected ? '#FAFAFA' : '#2B2B2B',
+                fontWeight: 700,
                 cursor: 'pointer',
-                boxShadow: isSelected ? '0 2px 10px rgba(72, 229, 194, 0.35)' : 'none',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '5px',
@@ -1131,13 +1037,12 @@ export default function CreatorDashboard() {
                 flexShrink: 0,
               }}
             >
-              <IconComp size={13} />
+              <IconComp size={13} color={isSelected ? '#FAFAFA' : '#2B2B2B'} />
               <span>{tmpl.name}</span>
             </button>
           );
         })}
 
-        {/* Clear Preset / Reset Session Button */}
         {(Boolean(pollTitle) || questions.some((q) => q.title.trim() || q.options.some((o) => o.text.trim()))) && (
           <button
             type="button"
@@ -1146,11 +1051,9 @@ export default function CreatorDashboard() {
             style={{
               fontSize: '0.8rem',
               padding: '6px 12px',
-              borderRadius: '10px',
-              color: '#f87171',
-              borderColor: 'rgba(248, 113, 113, 0.4)',
-              background: 'rgba(248, 113, 113, 0.1)',
-              fontWeight: 600,
+              color: '#DC2626',
+              borderColor: '#DC2626',
+              fontWeight: 700,
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
@@ -1158,14 +1061,13 @@ export default function CreatorDashboard() {
               whiteSpace: 'nowrap',
               flexShrink: 0,
             }}
-            title="Clear preset data and reset to a clean blank session"
+            title="Clear preset data"
           >
             <RotateCcw size={13} />
             <span>Clear Preset</span>
           </button>
         )}
 
-        {/* New Blank Session Button */}
         <button
           type="button"
           onClick={handleResetForm}
@@ -1173,273 +1075,273 @@ export default function CreatorDashboard() {
           style={{
             fontSize: '0.8rem',
             padding: '6px 12px',
-            borderRadius: '10px',
             gap: '5px',
             whiteSpace: 'nowrap',
             flexShrink: 0,
           }}
-          title="Start fresh with an empty blank polling session"
+          title="Start fresh with a blank polling session"
         >
           <Plus size={13} />
           <span>New Blank Session</span>
         </button>
       </div>
 
-      {/* Main Multi-Question Poll Form */}
-      <form onSubmit={(e) => e.preventDefault()} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {/* Session / Poll Title Card */}
-        <div className="glass-panel" style={{ padding: isMobile ? '18px 16px' : '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Session Title
-            </label>
-            <button
-              type="button"
-              onClick={handleResetForm}
-              className="btn-secondary"
-              style={{ padding: '3px 8px', fontSize: '0.72rem', gap: '4px' }}
-              title="Reset entire form"
-            >
-              <RotateCcw size={11} />
-              Reset
-            </button>
+      {/* Main Creation Form: Styled like a physical clipboard */}
+      <div className="clipboard-container" style={{ padding: isMobile ? '36px 16px 20px' : '44px 28px 28px' }}>
+        {/* Physical Top Metal Clip */}
+        <div className="clipboard-clip" title="Poll Clipboard" />
+
+        <div style={{ textAlign: 'center', marginBottom: '24px', borderBottom: '2px dashed #2B2B2B', paddingBottom: '16px' }}>
+          <div className="stamp-seal" style={{ marginBottom: '8px', fontSize: '0.78rem' }}>
+            LIVE POLL BUILDER
           </div>
-          <input
-            type="text"
-            className="input-field"
-            placeholder="e.g. Sprint Retrospective & Tech Architecture 2026"
-            value={pollTitle}
-            onChange={(e) => setPollTitle(e.target.value)}
-            style={{ fontSize: isMobile ? '0.92rem' : '1rem', padding: '11px 14px' }}
-          />
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#2B2B2B', fontFamily: "'Special Elite', monospace" }}>
+            Interactive Session Builder
+          </h2>
+          <p style={{ color: '#555555', fontSize: '0.88rem' }}>
+            Draft your poll questions below. Multiple questions are separated by dashed boundaries.
+          </p>
         </div>
 
-        {/* Questions Cards */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          {questions.map((q, qIdx) => (
-            <div
-              key={q.id || qIdx}
-              className="glass-panel"
-              style={{
-                padding: isMobile ? '18px 16px' : '24px',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                position: 'relative',
-              }}
-            >
-              {/* Question Header & Delete */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <span
-                  style={{
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    color: 'var(--accent-cyan)',
-                    background: 'rgba(72, 229, 194, 0.1)',
-                    padding: '3px 9px',
-                    borderRadius: '7px',
-                  }}
-                >
-                  Question {qIdx + 1} of {questions.length}
-                </span>
+        <form onSubmit={(e) => e.preventDefault()} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Session Title Field */}
+          <div style={{ paddingBottom: '18px', borderBottom: '2px dashed #2B2B2B' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 800, color: '#2B2B2B' }}>
+                Session Title
+              </label>
+              <button
+                type="button"
+                onClick={handleResetForm}
+                className="btn-secondary"
+                style={{ padding: '3px 8px', fontSize: '0.72rem', gap: '4px' }}
+                title="Reset form"
+              >
+                <RotateCcw size={11} />
+                Reset
+              </button>
+            </div>
+            <input
+              type="text"
+              className="input-field"
+              placeholder="e.g. Sprint Retrospective & Architecture Review 2026"
+              value={pollTitle}
+              onChange={(e) => setPollTitle(e.target.value)}
+              style={{ fontSize: isMobile ? '0.95rem' : '1.05rem', padding: '12px 14px' }}
+            />
+          </div>
 
-                {questions.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveQuestion(qIdx)}
+          {/* Questions List */}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {questions.map((q, qIdx) => (
+              <div
+                key={q.id || qIdx}
+                style={{
+                  paddingBottom: '24px',
+                  marginBottom: '24px',
+                  borderBottom: '2px dashed #2B2B2B',
+                  position: 'relative',
+                }}
+              >
+                {/* Question Header & Delete */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span
                     style={{
-                      background: 'rgba(239, 68, 68, 0.1)',
-                      border: '1px solid rgba(239, 68, 68, 0.25)',
-                      color: '#f87171',
-                      padding: '4px 9px',
-                      borderRadius: '7px',
-                      fontSize: '0.75rem',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      cursor: 'pointer',
+                      fontSize: '0.82rem',
+                      fontWeight: 800,
+                      color: '#FAFAFA',
+                      background: '#2B2B2B',
+                      padding: '3px 10px',
                     }}
                   >
-                    <Trash2 size={13} />
-                    <span>Remove</span>
+                    Question #{qIdx + 1} of {questions.length}
+                  </span>
+
+                  {questions.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveQuestion(qIdx)}
+                      className="btn-secondary"
+                      style={{
+                        color: '#DC2626',
+                        borderColor: '#DC2626',
+                        padding: '4px 9px',
+                        fontSize: '0.75rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      <Trash2 size={13} />
+                      <span>Remove Question</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Question Prompt Input */}
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder={`Enter question #${qIdx + 1} prompt...`}
+                  value={q.title}
+                  onChange={(e) => handleQuestionTitleChange(qIdx, e.target.value)}
+                  style={{ marginBottom: '16px', fontWeight: 700, fontSize: '1rem' }}
+                />
+
+                {/* Choices */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {q.options.map((opt, oIdx) => (
+                    <div key={oIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span
+                        style={{
+                          width: '30px',
+                          height: '30px',
+                          background: '#EBE7DD',
+                          border: '1px solid #2B2B2B',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 800,
+                          fontSize: '0.85rem',
+                          color: '#2B2B2B',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {String.fromCharCode(65 + oIdx)}
+                      </span>
+                      <input
+                        type="text"
+                        className="input-field"
+                        placeholder={`Choice ${String.fromCharCode(65 + oIdx)}`}
+                        value={opt.text}
+                        onChange={(e) => handleOptionChange(qIdx, oIdx, e.target.value)}
+                        style={{ flex: 1, padding: '9px 12px', fontSize: '0.9rem' }}
+                      />
+                      {q.options.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveOption(qIdx, oIdx)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#888888',
+                            cursor: 'pointer',
+                            padding: '6px',
+                          }}
+                          title="Remove choice"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add Choice */}
+                {q.options.length < 4 && (
+                  <button
+                    type="button"
+                    onClick={() => handleAddOption(qIdx)}
+                    className="btn-secondary"
+                    style={{
+                      marginTop: '12px',
+                      fontSize: '0.8rem',
+                      padding: '6px 12px',
+                      border: '1px dashed #2B2B2B',
+                      background: '#FAFAFA',
+                    }}
+                  >
+                    <Plus size={13} />
+                    Add Choice ({q.options.length}/4)
                   </button>
                 )}
               </div>
+            ))}
+          </div>
 
-              {/* Question Input */}
-              <input
-                type="text"
-                className="input-field"
-                placeholder={`Type Question ${qIdx + 1}...`}
-                value={q.title}
-                onChange={(e) => handleQuestionTitleChange(qIdx, e.target.value)}
-                style={{ marginBottom: '14px', fontWeight: 600, fontSize: '0.94rem' }}
-              />
-
-              {/* Options */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-                {q.options.map((opt, oIdx) => (
-                  <div key={oIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '8px',
-                        background: opt.color || PALETTE[oIdx % PALETTE.length],
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 800,
-                        fontSize: '0.82rem',
-                        color: isLightColor(opt.color || PALETTE[oIdx % PALETTE.length]) ? '#000000' : '#fff',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {String.fromCharCode(65 + oIdx)}
-                    </span>
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder={`Choice ${String.fromCharCode(65 + oIdx)}`}
-                      value={opt.text}
-                      onChange={(e) => handleOptionChange(qIdx, oIdx, e.target.value)}
-                      style={{ flex: 1, padding: '9px 12px', fontSize: '0.88rem' }}
-                    />
-                    {q.options.length > 2 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveOption(qIdx, oIdx)}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: 'var(--text-muted)',
-                          cursor: 'pointer',
-                          padding: '6px',
-                        }}
-                        title="Remove choice"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Add Choice */}
-              {q.options.length < 4 && (
-                <button
-                  type="button"
-                  onClick={() => handleAddOption(qIdx)}
-                  style={{
-                    marginTop: '10px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    background: 'none',
-                    border: '1px dashed var(--border-subtle)',
-                    color: 'var(--accent-cyan)',
-                    padding: '6px 12px',
-                    borderRadius: 'var(--radius-md)',
-                    cursor: 'pointer',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                  }}
-                >
-                  <Plus size={13} />
-                  Add Choice ({q.options.length}/4)
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Add Another Question */}
-        <button
-          type="button"
-          onClick={handleAddQuestion}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            background: 'rgba(72, 229, 194, 0.06)',
-            border: '2px dashed rgba(72, 229, 194, 0.4)',
-            color: '#48E5C2',
-            padding: '13px',
-            borderRadius: '14px',
-            cursor: 'pointer',
-            fontSize: '0.92rem',
-            fontWeight: 700,
-          }}
-        >
-          <Plus size={17} color="#48E5C2" />
-          Add Another Question to Session
-        </button>
-
-        {/* Error Alert */}
-        {errorMessage && (
-          <div
+          {/* Add Another Question Button */}
+          <button
+            type="button"
+            onClick={handleAddQuestion}
+            className="btn-secondary"
             style={{
-              background: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
-              borderRadius: '12px',
-              padding: '11px 14px',
               display: 'flex',
               alignItems: 'center',
-              gap: '10px',
-              color: '#fca5a5',
-              fontSize: '0.88rem',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '14px',
+              border: '2px dashed #2B2B2B',
+              fontSize: '0.95rem',
+              fontWeight: 800,
             }}
           >
-            <AlertCircle size={17} color="#ef4444" flexShrink={0} />
-            <span>{errorMessage}</span>
-          </div>
-        )}
+            <Plus size={18} color="#2B2B2B" />
+            Add Another Question to Session
+          </button>
 
-        {/* Launch Button */}
-        <button
-          type="button"
-          onClick={handlePollSubmit}
-          className="btn-primary"
-          disabled={isSubmitting}
-          style={{
-            width: '100%',
-            justifyContent: 'center',
-            padding: '14px',
-            fontSize: '0.98rem',
-            borderRadius: '14px',
-            background: '#48E5C2',
-            color: '#000000',
-            fontWeight: 800,
-            cursor: isSubmitting ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 size={18} className="animate-spin" />
-              Saving Session to MongoDB...
-            </>
-          ) : (
-            <>
-              <Play size={16} fill="#000000" />
-              Launch Session & Open Projector
-              <ArrowRight size={17} />
-            </>
+          {errorMessage && (
+            <div
+              style={{
+                background: 'rgba(220, 38, 38, 0.08)',
+                border: '1px solid #DC2626',
+                padding: '11px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                color: '#DC2626',
+                fontSize: '0.88rem',
+              }}
+            >
+              <AlertCircle size={17} color="#DC2626" flexShrink={0} />
+              <span>{errorMessage}</span>
+            </div>
           )}
-        </button>
-      </form>
+
+          {/* Launch Button */}
+          <button
+            type="button"
+            onClick={handlePollSubmit}
+            className="btn-stamp"
+            disabled={isSubmitting}
+            style={{
+              width: '100%',
+              justifyContent: 'center',
+              padding: '15px',
+              fontSize: '1rem',
+              fontWeight: 800,
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                Saving Session to Database...
+              </>
+            ) : (
+              <>
+                <Play size={16} fill="#FFFFFF" />
+                Launch Session &amp; Open Projector
+                <ArrowRight size={17} />
+              </>
+            )}
+          </button>
+        </form>
+      </div>
     </div>
   );
 
-  // --- Profile Bar Component ---
+  // Profile Bar
   const renderProfileBar = () => (
     <div
+      className="glass-panel"
       style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: isMobile ? '10px 14px' : '14px 20px',
-        borderRadius: 'var(--radius-md)',
-        background: 'rgba(255, 255, 255, 0.03)',
-        border: '1px solid var(--border-subtle)',
+        padding: isMobile ? '12px 14px' : '14px 20px',
+        background: '#FAFAFA',
+        border: '1px solid #2B2B2B',
+        boxShadow: '4px 4px 0px rgba(43, 43, 43, 0.15)',
         marginBottom: isMobile ? '18px' : '28px',
         flexWrap: 'wrap',
         gap: '10px',
@@ -1450,22 +1352,21 @@ export default function CreatorDashboard() {
           style={{
             width: isMobile ? '32px' : '38px',
             height: isMobile ? '32px' : '38px',
-            borderRadius: '50%',
-            background: 'var(--accent-gradient)',
+            background: '#2B2B2B',
+            border: '1px solid #1A1A1A',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#fff',
-            fontWeight: 700,
+            color: '#FAFAFA',
+            fontWeight: 800,
             fontSize: isMobile ? '0.85rem' : '0.95rem',
             overflow: 'hidden',
-            border: '1.5px solid rgba(72, 229, 194, 0.4)',
           }}
         >
           {currentUser.avatar ? (
             <img
               src={currentUser.avatar}
-              alt={currentUser.name || 'Creator'}
+              alt={currentUser.name || 'Host'}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               onError={(e) => {
                 e.target.style.display = 'none';
@@ -1478,11 +1379,11 @@ export default function CreatorDashboard() {
           )}
         </div>
         <div>
-          <div style={{ fontSize: isMobile ? '0.88rem' : '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-            Welcome, {currentUser.name}
+          <div style={{ fontSize: isMobile ? '0.88rem' : '0.96rem', fontWeight: 800, color: '#2B2B2B' }}>
+            Host: {currentUser.name}
           </div>
-          <div style={{ fontSize: isMobile ? '0.74rem' : '0.8rem', color: 'var(--text-muted)' }}>
-            {currentUser.email} &bull; <span style={{ color: '#10b981' }}>Verified Creator</span>
+          <div style={{ fontSize: isMobile ? '0.74rem' : '0.8rem', color: '#555555' }}>
+            {currentUser.email} &bull; <span style={{ color: '#2563EB', fontWeight: 700 }}>Verified Host</span>
           </div>
         </div>
       </div>
@@ -1499,7 +1400,7 @@ export default function CreatorDashboard() {
     </div>
   );
 
-  // --- MOBILE LAYOUT (<768px) ---
+  // MOBILE LAYOUT
   if (isMobile) {
     return (
       <main
@@ -1517,12 +1418,11 @@ export default function CreatorDashboard() {
           style={{
             display: 'grid',
             gridTemplateColumns: '1fr 1fr 1fr',
-            background: 'rgba(0, 0, 0, 0.45)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: '12px',
-            padding: '4px',
+            background: '#F4F1EA',
+            border: '1px solid #2B2B2B',
+            padding: '2px',
             marginBottom: '18px',
-            gap: '4px',
+            gap: '2px',
           }}
         >
           <button
@@ -1530,18 +1430,17 @@ export default function CreatorDashboard() {
             onClick={() => setMobileTab('builder')}
             style={{
               padding: '9px 4px',
-              border: 'none',
-              borderRadius: '9px',
-              background: mobileTab === 'builder' ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'transparent',
-              color: mobileTab === 'builder' ? '#000000' : 'var(--text-secondary)',
-              fontWeight: mobileTab === 'builder' ? 700 : 500,
+              border: mobileTab === 'builder' ? '1px solid #2B2B2B' : 'none',
+              background: mobileTab === 'builder' ? '#2B2B2B' : 'transparent',
+              color: mobileTab === 'builder' ? '#FAFAFA' : '#2B2B2B',
+              fontWeight: 800,
               fontSize: '0.78rem',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '4px',
-              transition: 'all 0.2s ease',
+              fontFamily: "'Special Elite', monospace",
             }}
           >
             <Rocket size={13} />
@@ -1552,18 +1451,17 @@ export default function CreatorDashboard() {
             onClick={() => setMobileTab('sessions')}
             style={{
               padding: '9px 4px',
-              border: 'none',
-              borderRadius: '9px',
-              background: mobileTab === 'sessions' ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'transparent',
-              color: mobileTab === 'sessions' ? '#000000' : 'var(--text-secondary)',
-              fontWeight: mobileTab === 'sessions' ? 700 : 500,
+              border: mobileTab === 'sessions' ? '1px solid #2B2B2B' : 'none',
+              background: mobileTab === 'sessions' ? '#2B2B2B' : 'transparent',
+              color: mobileTab === 'sessions' ? '#FAFAFA' : '#2B2B2B',
+              fontWeight: 800,
               fontSize: '0.78rem',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '4px',
-              transition: 'all 0.2s ease',
+              fontFamily: "'Special Elite', monospace",
             }}
           >
             <ListOrdered size={13} />
@@ -1574,18 +1472,17 @@ export default function CreatorDashboard() {
             onClick={() => setMobileTab('join')}
             style={{
               padding: '9px 4px',
-              border: 'none',
-              borderRadius: '9px',
-              background: mobileTab === 'join' ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'transparent',
-              color: mobileTab === 'join' ? '#000000' : 'var(--text-secondary)',
-              fontWeight: mobileTab === 'join' ? 700 : 500,
+              border: mobileTab === 'join' ? '1px solid #2B2B2B' : 'none',
+              background: mobileTab === 'join' ? '#2B2B2B' : 'transparent',
+              color: mobileTab === 'join' ? '#FAFAFA' : '#2B2B2B',
+              fontWeight: 800,
               fontSize: '0.78rem',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '4px',
-              transition: 'all 0.2s ease',
+              fontFamily: "'Special Elite', monospace",
             }}
           >
             <Smartphone size={13} />
@@ -1596,11 +1493,11 @@ export default function CreatorDashboard() {
         {mobileTab === 'builder' && (
           <div>
             <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-              <h2 style={{ fontSize: '1.45rem', marginBottom: '4px' }}>
-                Design <span className="gradient-text">Live Poll Session</span>
+              <h2 style={{ fontSize: '1.45rem', marginBottom: '4px', fontFamily: "'Special Elite', monospace" }}>
+                Design Live Poll Session
               </h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-                Craft interactive questions with real-time analytics.
+              <p style={{ color: '#555555', fontSize: '0.82rem' }}>
+                Draft questions on the clipboard with physical paper styling.
               </p>
             </div>
             {renderBuilderContent()}
@@ -1610,7 +1507,9 @@ export default function CreatorDashboard() {
         {mobileTab === 'sessions' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Your Sessions ({myPolls.length})</h2>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: "'Special Elite', monospace" }}>
+                Your Sessions ({myPolls.length})
+              </h2>
               <button
                 onClick={loadMyPolls}
                 className="btn-secondary"
@@ -1632,7 +1531,7 @@ export default function CreatorDashboard() {
     );
   }
 
-  // --- LAPTOP / DESKTOP STUDIO LAYOUT (>=768px) ---
+  // LAPTOP STUDIO LAYOUT
   return (
     <main
       style={{
@@ -1646,49 +1545,44 @@ export default function CreatorDashboard() {
 
       {/* Header Title */}
       <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '5px 14px',
-            borderRadius: 'var(--radius-full)',
-            background: 'rgba(99, 102, 241, 0.12)',
-            border: '1px solid rgba(99, 102, 241, 0.3)',
-            color: 'var(--accent-primary)',
-            fontSize: '0.82rem',
-            fontWeight: 600,
-            marginBottom: '10px',
-          }}
-        >
-          <ListOrdered size={14} />
-          Creator Studio & Dynamic Multi-Question Suite
+        <div className="stamp-seal" style={{ marginBottom: '10px' }}>
+          INTERACTIVE POLLING STUDIO
         </div>
-        <h1 style={{ fontSize: '2.4rem', marginBottom: '8px' }}>
-          Design Your <span className="gradient-text">Live Polling Session</span>
+        <h1 style={{ fontSize: '2.4rem', marginBottom: '8px', color: '#2B2B2B', fontFamily: "'Special Elite', monospace" }}>
+          Design Your Live Polling Session
         </h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.96rem', maxWidth: '620px', margin: '0 auto' }}>
-          Create multiple interactive questions under a single session. Presenters can cycle questions and conclude with an animated Leaderboard!
+        <p style={{ color: '#555555', fontSize: '0.96rem', maxWidth: '620px', margin: '0 auto' }}>
+          Create interactive multi-question polls for classrooms, meetings, workshops, and events with instant real-time presentations.
         </p>
       </div>
 
       {/* Studio 2-Column Grid */}
       <div className="creator-studio-layout">
-        {/* Left/Main Column: Form & Questions */}
+        {/* Left Column: Official Clipboard Form */}
         <div>
           {renderBuilderContent()}
         </div>
 
-        {/* Right Sidebar Column: Quick Join & Session Manager */}
+        {/* Right Sidebar: Quick Join & Session Ledger */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
           {renderQuickJoinCard()}
 
-          {/* Sessions List Panel */}
-          <div className="glass-panel" style={{ padding: '22px 20px', borderRadius: '18px' }}>
+          {/* Sessions Ledger Panel */}
+          <div
+            className="glass-panel"
+            style={{
+              padding: '22px 20px',
+              background: '#FAFAFA',
+              border: '1px solid #2B2B2B',
+              boxShadow: '6px 6px 0px rgba(43, 43, 43, 0.15)',
+            }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Layers size={17} color="var(--accent-primary)" />
-                <h3 style={{ fontSize: '1.08rem', fontWeight: 700 }}>Your Sessions ({myPolls.length})</h3>
+                <Layers size={17} color="#2B2B2B" />
+                <h3 style={{ fontSize: '1.08rem', fontWeight: 800, fontFamily: "'Special Elite', monospace" }}>
+                  Your Sessions ({myPolls.length})
+                </h3>
               </div>
               <button
                 onClick={loadMyPolls}
