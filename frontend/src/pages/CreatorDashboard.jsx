@@ -618,17 +618,19 @@ export default function CreatorDashboard() {
     <div
       className="glass-panel"
       style={{
-        padding: isMobile ? '18px 16px' : '20px 22px',
+        padding: isMobile ? '16px 14px' : '20px 22px',
         background: '#FAFAFA',
         border: '1px solid #2B2B2B',
-        boxShadow: '4px 4px 0px rgba(43, 43, 43, 0.15)',
+        boxShadow: isMobile ? '3px 3px 0px rgba(43, 43, 43, 0.15)' : '4px 4px 0px rgba(43, 43, 43, 0.15)',
+        width: '100%',
+        boxSizing: 'border-box',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
         <div
           style={{
-            width: '36px',
-            height: '36px',
+            width: isMobile ? '32px' : '36px',
+            height: isMobile ? '32px' : '36px',
             background: '#2B2B2B',
             display: 'flex',
             alignItems: 'center',
@@ -637,13 +639,13 @@ export default function CreatorDashboard() {
             flexShrink: 0,
           }}
         >
-          <Smartphone size={18} />
+          <Smartphone size={isMobile ? 16 : 18} />
         </div>
-        <div>
-          <h3 style={{ fontSize: '0.98rem', fontWeight: 800, color: '#2B2B2B', marginBottom: '2px', fontFamily: "'Special Elite', monospace" }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h3 style={{ fontSize: isMobile ? '0.92rem' : '0.98rem', fontWeight: 800, color: '#2B2B2B', marginBottom: '2px', fontFamily: "'Special Elite', monospace" }}>
             Audience Quick Join
           </h3>
-          <p style={{ fontSize: '0.78rem', color: '#555555' }}>
+          <p style={{ fontSize: isMobile ? '0.74rem' : '0.78rem', color: '#555555' }}>
             Enter presenter's session PIN to vote:
           </p>
         </div>
@@ -656,7 +658,7 @@ export default function CreatorDashboard() {
             navigate(`/vote/${joinSessionInput.trim()}`);
           }
         }}
-        style={{ display: 'flex', gap: '8px', flexDirection: isMobile ? 'column' : 'row' }}
+        style={{ display: 'flex', gap: '8px', flexDirection: isMobile ? 'column' : 'row', width: '100%' }}
       >
         <input
           type="text"
@@ -664,13 +666,13 @@ export default function CreatorDashboard() {
           value={joinSessionInput}
           onChange={(e) => setJoinSessionInput(e.target.value)}
           className="input-field"
-          style={{ padding: '9px 12px', fontSize: '0.85rem', flex: 1 }}
+          style={{ padding: isMobile ? '10px 12px' : '9px 12px', fontSize: '0.85rem', flex: 1, width: '100%' }}
         />
         <button
           type="submit"
           className="btn-primary"
           disabled={!joinSessionInput.trim()}
-          style={{ padding: '9px 14px', fontSize: '0.85rem', whiteSpace: 'nowrap', justifyContent: 'center' }}
+          style={{ padding: isMobile ? '10px 14px' : '9px 14px', fontSize: '0.85rem', whiteSpace: 'nowrap', justifyContent: 'center', width: isMobile ? '100%' : 'auto' }}
         >
           Join Poll
           <ArrowRight size={14} />
@@ -686,19 +688,21 @@ export default function CreatorDashboard() {
       style={{
         background: '#FAFAFA',
         border: '2px solid #2B2B2B',
-        boxShadow: '8px 8px 0px rgba(43, 43, 43, 0.2)',
-        padding: isMobile ? '24px 18px' : '32px 26px',
+        boxShadow: isMobile ? '4px 4px 0px rgba(43, 43, 43, 0.2)' : '8px 8px 0px rgba(43, 43, 43, 0.2)',
+        padding: isMobile ? '20px 16px' : '32px 26px',
         position: 'relative',
+        width: '100%',
+        boxSizing: 'border-box',
       }}
     >
-      <div style={{ textAlign: 'center', marginBottom: '22px' }}>
-        <div className="stamp-seal" style={{ marginBottom: '12px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+        <div className="stamp-seal" style={{ marginBottom: '10px', fontSize: isMobile ? '0.7rem' : '0.78rem' }}>
           CREATOR &amp; HOST PORTAL
         </div>
-        <h2 style={{ fontSize: isMobile ? '1.8rem' : '2.1rem', marginBottom: '8px', color: '#2B2B2B', fontFamily: "'Special Elite', monospace" }}>
+        <h2 style={{ fontSize: isMobile ? '1.5rem' : '2.1rem', marginBottom: '8px', color: '#2B2B2B', fontFamily: "'Special Elite', monospace" }}>
           Host Portal &amp; Studio
         </h2>
-        <p style={{ color: '#555555', fontSize: '0.88rem', lineHeight: 1.45 }}>
+        <p style={{ color: '#555555', fontSize: isMobile ? '0.82rem' : '0.88rem', lineHeight: 1.45 }}>
           Sign in or register your host account to design and present interactive multi-question polls.
         </p>
       </div>
@@ -912,14 +916,14 @@ export default function CreatorDashboard() {
   // Unauthenticated Landing Page State
   if (!currentUser) {
     return (
-      <main style={{ width: '100%', minHeight: '100vh', padding: isMobile ? '12px 0 80px' : '24px 0 60px' }}>
+      <main style={{ width: '100%', minHeight: '100vh', padding: isMobile ? '8px 0 calc(80px + var(--safe-bottom))' : '24px 0 60px', overflowX: 'hidden' }}>
         <LandingInfo
           authComponent={renderAuthCard()}
           quickJoinComponent={renderQuickJoinCard()}
           onScrollToAuth={() => {
             const el = document.getElementById('auth-portal-section');
             if (el) {
-              el.scrollIntoView({ behavior: 'smooth' });
+              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
           }}
         />

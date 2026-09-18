@@ -85,7 +85,7 @@ export default function Header() {
             }}>
               PulseCast
             </span>
-            <span className="stamp-seal" style={{
+            <span className="stamp-seal header-live-stamp" style={{
               fontSize: isMobile ? '0.62rem' : '0.68rem',
               marginLeft: '6px',
               padding: '1px 5px',
@@ -219,6 +219,14 @@ export default function Header() {
           ) : isMobile ? (
             <Link
               to="/"
+              onClick={() => {
+                if (location.pathname === '/') {
+                  const el = document.getElementById('auth-portal-section');
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }
+              }}
               style={{
                 fontSize: '0.8rem',
                 color: '#2B2B2B',

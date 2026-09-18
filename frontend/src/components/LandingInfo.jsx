@@ -22,8 +22,12 @@ import {
   Rocket,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { useDeviceType } from '../hooks/useDeviceType';
 
 export default function LandingInfo({ authComponent, quickJoinComponent, onScrollToAuth }) {
+  const { isMobile, isTablet } = useDeviceType();
+  const isNarrow = isMobile || isTablet;
+
   // Interactive Simulator State
   const [demoVotes, setDemoVotes] = useState({
     opt1: 42,
@@ -48,7 +52,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
 
     try {
       confetti({
-        particleCount: 45,
+        particleCount: isMobile ? 30 : 45,
         spread: 55,
         origin: { y: 0.75 },
         colors: ['#2563EB', '#DC2626', '#2B2B2B', '#EBE7DD'],
@@ -76,7 +80,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
       icon: QrCode,
       badge: 'FRICTIONLESS',
       title: 'Zero-Install QR Scan',
-      desc: 'Room participants simply point their camera at the presentation screen or type the 6-character Session PIN. No mobile app downloads and no mandatory accounts.',
+      desc: 'Room participants simply point their camera at the presentation screen or type the Session PIN. No mobile app downloads and no mandatory accounts.',
       color: '#2B2B2B',
     },
     {
@@ -150,35 +154,54 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
   ];
 
   return (
-    <div style={{ width: '100%', maxWidth: '1240px', margin: '0 auto', padding: '10px 16px 60px' }}>
+    <div
+      style={{
+        width: '100%',
+        maxWidth: '1240px',
+        margin: '0 auto',
+        padding: isMobile ? '8px 12px 40px' : '10px 16px 60px',
+        boxSizing: 'border-box',
+      }}
+    >
       {/* 1. HERO SECTION */}
-      <section style={{ marginBottom: '60px' }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: authComponent ? 'minmax(0, 1.25fr) minmax(320px, 460px)' : '1fr',
-            gap: '32px',
-            alignItems: 'start',
-          }}
-        >
-          {/* Left Column: Headline & Interactive Demo */}
-          <div>
+      <section style={{ marginBottom: isMobile ? '40px' : '60px', width: '100%' }}>
+        <div className="landing-hero-grid">
+          {/* Left Column: Headline, Actions & Interactive Demo */}
+          <div style={{ width: '100%', minWidth: 0 }}>
             {/* Header Stamp Badge */}
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '18px' }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: isMobile ? '14px' : '18px',
+                maxWidth: '100%',
+              }}
             >
-              <span className="stamp-seal" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <span
+                className="stamp-seal"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: isMobile ? '0.68rem' : '0.78rem',
+                  padding: isMobile ? '3px 8px' : '4px 12px',
+                  lineHeight: 1.3,
+                  flexWrap: 'wrap',
+                }}
+              >
                 <span
                   style={{
-                    width: '8px',
-                    height: '8px',
+                    width: '7px',
+                    height: '7px',
                     borderRadius: '50%',
                     background: '#DC2626',
                     display: 'inline-block',
                     animation: 'pulse 1.8s infinite',
+                    flexShrink: 0,
                   }}
                 />
                 EST. 2026 • LIVE AUDIENCE ENGAGEMENT SYSTEM
@@ -191,12 +214,13 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
               style={{
-                fontSize: 'clamp(2.1rem, 4.5vw, 3.4rem)',
-                lineHeight: 1.12,
+                fontSize: isMobile ? 'clamp(1.75rem, 5.8vw, 2.3rem)' : 'clamp(2.1rem, 4.5vw, 3.4rem)',
+                lineHeight: 1.15,
                 color: '#2B2B2B',
-                marginBottom: '16px',
+                marginBottom: isMobile ? '12px' : '16px',
                 fontFamily: "'Special Elite', monospace",
                 letterSpacing: '-0.02em',
+                wordBreak: 'break-word',
               }}
             >
               Turn Presentations Into{' '}
@@ -204,7 +228,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                 style={{
                   fontFamily: "'Caveat', cursive",
                   color: '#2563EB',
-                  fontSize: 'clamp(2.6rem, 5.2vw, 4.2rem)',
+                  fontSize: isMobile ? 'clamp(2.1rem, 7vw, 2.9rem)' : 'clamp(2.6rem, 5.2vw, 4.2rem)',
                   display: 'inline-block',
                   transform: 'rotate(-1.5deg)',
                 }}
@@ -219,10 +243,10 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
               style={{
-                fontSize: '1.05rem',
+                fontSize: isMobile ? '0.9rem' : '1.05rem',
                 color: '#444444',
-                lineHeight: 1.6,
-                marginBottom: '26px',
+                lineHeight: 1.55,
+                marginBottom: isMobile ? '20px' : '26px',
                 maxWidth: '680px',
               }}
             >
@@ -235,7 +259,13 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '32px' }}
+              style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                gap: '10px',
+                marginBottom: isMobile ? '22px' : '32px',
+                width: '100%',
+              }}
             >
               <button
                 type="button"
@@ -244,9 +274,11 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
+                  justifyContent: 'center',
                   gap: '8px',
-                  padding: '12px 22px',
-                  fontSize: '0.96rem',
+                  padding: isMobile ? '12px 18px' : '12px 22px',
+                  fontSize: isMobile ? '0.9rem' : '0.96rem',
+                  width: isMobile ? '100%' : 'auto',
                 }}
               >
                 <Sparkles size={18} />
@@ -259,10 +291,12 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
+                  justifyContent: 'center',
                   gap: '8px',
-                  padding: '12px 20px',
-                  fontSize: '0.96rem',
+                  padding: isMobile ? '11px 16px' : '12px 20px',
+                  fontSize: isMobile ? '0.9rem' : '0.96rem',
                   textDecoration: 'none',
+                  width: isMobile ? '100%' : 'auto',
                 }}
               >
                 <BarChart2 size={18} />
@@ -278,67 +312,87 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
               style={{
                 background: '#FAFAFA',
                 border: '1px solid #2B2B2B',
-                boxShadow: '4px 4px 0px rgba(43, 43, 43, 0.15)',
-                padding: '12px 16px',
-                display: 'flex',
-                flexWrap: 'wrap',
+                boxShadow: isMobile ? '3px 3px 0px rgba(43, 43, 43, 0.12)' : '4px 4px 0px rgba(43, 43, 43, 0.15)',
+                padding: isMobile ? '10px 12px' : '12px 16px',
+                display: 'grid',
+                gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, auto)',
                 alignItems: 'center',
-                gap: '16px',
-                fontSize: '0.82rem',
+                gap: isMobile ? '10px 8px' : '16px',
+                fontSize: isMobile ? '0.74rem' : '0.82rem',
                 color: '#333333',
+                width: '100%',
+                boxSizing: 'border-box',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}>
-                <Zap size={14} color="#2563EB" />
-                <span>&lt; 10ms Concurrency</span>
+                <Zap size={14} color="#2563EB" flexShrink={0} />
+                <span>&lt; 10ms Sync</span>
               </div>
-              <span style={{ color: '#CCCCCC' }}>•</span>
+              {!isMobile && <span style={{ color: '#CCCCCC' }}>•</span>}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}>
-                <Smartphone size={14} color="#2B2B2B" />
-                <span>Zero App Installs</span>
+                <Smartphone size={14} color="#2B2B2B" flexShrink={0} />
+                <span>Zero Installs</span>
               </div>
-              <span style={{ color: '#CCCCCC' }}>•</span>
+              {!isMobile && <span style={{ color: '#CCCCCC' }}>•</span>}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}>
-                <QrCode size={14} color="#DC2626" />
-                <span>LAN QR Dynamic Connect</span>
+                <QrCode size={14} color="#DC2626" flexShrink={0} />
+                <span>LAN QR Connect</span>
               </div>
-              <span style={{ color: '#CCCCCC' }}>•</span>
+              {!isMobile && <span style={{ color: '#CCCCCC' }}>•</span>}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800 }}>
-                <Trophy size={14} color="#F59E0B" />
-                <span>Live Podium &amp; Confetti</span>
+                <Trophy size={14} color="#F59E0B" flexShrink={0} />
+                <span>Live Podium</span>
               </div>
             </motion.div>
 
+            {/* On Mobile/Tablet: Place Audience Quick Join right here for immediate zero-friction access */}
+            {isNarrow && quickJoinComponent && (
+              <div style={{ marginTop: '22px', width: '100%' }}>
+                {quickJoinComponent}
+              </div>
+            )}
+
             {/* INTERACTIVE DEMO SIMULATOR */}
-            <div id="live-demo" style={{ marginTop: '36px' }}>
+            <div id="live-demo" style={{ marginTop: isMobile ? '24px' : '36px', width: '100%' }}>
               <motion.div
                 className="glass-panel"
                 style={{
                   background: '#FAFAFA',
                   border: '2px solid #2B2B2B',
-                  boxShadow: '6px 6px 0px rgba(43, 43, 43, 0.2)',
-                  padding: '24px 22px',
+                  boxShadow: isMobile ? '4px 4px 0px rgba(43, 43, 43, 0.2)' : '6px 6px 0px rgba(43, 43, 43, 0.2)',
+                  padding: isMobile ? '18px 14px' : '24px 22px',
                   position: 'relative',
+                  width: '100%',
+                  boxSizing: 'border-box',
                 }}
                 whileHover={{ boxShadow: '8px 8px 0px rgba(43, 43, 43, 0.25)' }}
                 transition={{ duration: 0.2 }}
               >
                 {/* Header tag */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: isMobile ? 'flex-start' : 'center',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    gap: '8px',
+                    marginBottom: '14px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <span
                       style={{
                         background: '#2B2B2B',
                         color: '#FAFAFA',
                         padding: '3px 8px',
-                        fontSize: '0.72rem',
+                        fontSize: '0.7rem',
                         fontWeight: 800,
                         letterSpacing: '0.05em',
                       }}
                     >
                       INTERACTIVE DEMO
                     </span>
-                    <span style={{ fontSize: '0.76rem', color: '#666666' }}>
+                    <span style={{ fontSize: isMobile ? '0.72rem' : '0.76rem', color: '#666666' }}>
                       Click any choice to simulate live voting:
                     </span>
                   </div>
@@ -350,13 +404,14 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                         background: 'none',
                         border: 'none',
                         color: '#666666',
-                        fontSize: '0.76rem',
+                        fontSize: '0.74rem',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '4px',
                         textDecoration: 'underline',
                         fontFamily: "'Special Elite', monospace",
+                        padding: '2px 0',
                       }}
                     >
                       <RefreshCw size={12} />
@@ -367,17 +422,18 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
 
                 <h3
                   style={{
-                    fontSize: '1.16rem',
+                    fontSize: isMobile ? '1.02rem' : '1.16rem',
                     color: '#2B2B2B',
-                    marginBottom: '18px',
+                    marginBottom: '16px',
                     fontFamily: "'Special Elite', monospace",
+                    lineHeight: 1.35,
                   }}
                 >
                   "What capability makes an audience poll most captivating?"
                 </h3>
 
                 {/* Demo Options */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
                   {[
                     { key: 'opt1', text: 'Sub-10ms Live Bar Updates on Screen', color: '#2563EB' },
                     { key: 'opt2', text: 'Instant QR Code Scan (Zero App Install)', color: '#2B2B2B' },
@@ -400,12 +456,13 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                           background: isSelected ? '#DBEAFE' : '#FFFFFF',
                           border: isSelected ? '2px solid #2563EB' : '1px solid #2B2B2B',
                           boxShadow: isSelected ? '3px 3px 0px #2563EB' : '2px 2px 0px rgba(43,43,43,0.15)',
-                          padding: '10px 14px',
+                          padding: isMobile ? '10px 12px' : '10px 14px',
                           cursor: 'pointer',
                           position: 'relative',
                           overflow: 'hidden',
                           transition: 'all 0.15s ease',
                           fontFamily: "'Special Elite', monospace",
+                          boxSizing: 'border-box',
                         }}
                       >
                         {/* Background Progress Bar */}
@@ -424,47 +481,74 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                         />
 
                         {/* Content */}
-                        <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div
+                          style={{
+                            position: 'relative',
+                            zIndex: 1,
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: '10px',
+                            width: '100%',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '10px', minWidth: 0, flex: 1 }}>
                             <span
                               style={{
-                                width: '22px',
-                                height: '22px',
+                                width: isMobile ? '20px' : '22px',
+                                height: isMobile ? '20px' : '22px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 border: '1px solid #2B2B2B',
                                 background: isSelected ? '#2563EB' : '#FAFAFA',
                                 color: isSelected ? '#FFFFFF' : '#2B2B2B',
-                                fontSize: '0.78rem',
+                                fontSize: '0.75rem',
                                 fontWeight: 800,
+                                flexShrink: 0,
                               }}
                             >
                               {String.fromCharCode(65 + idx)}
                             </span>
-                            <span style={{ fontSize: '0.9rem', fontWeight: isSelected ? 800 : 600, color: '#2B2B2B' }}>
+                            <span
+                              style={{
+                                fontSize: isMobile ? '0.82rem' : '0.9rem',
+                                fontWeight: isSelected ? 800 : 600,
+                                color: '#2B2B2B',
+                                lineHeight: 1.3,
+                                wordBreak: 'break-word',
+                              }}
+                            >
                               {opt.text}
                             </span>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                             {isSelected && (
                               <span
                                 style={{
                                   background: '#2563EB',
                                   color: '#FFFFFF',
-                                  fontSize: '0.68rem',
+                                  fontSize: '0.64rem',
                                   fontWeight: 800,
-                                  padding: '2px 6px',
+                                  padding: '2px 5px',
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  gap: '3px',
+                                  gap: '2px',
                                 }}
                               >
-                                <Check size={11} /> VOTED
+                                <Check size={10} /> VOTED
                               </span>
                             )}
-                            <span style={{ fontSize: '0.88rem', fontWeight: 800, color: opt.color, minWidth: '42px', textAlign: 'right' }}>
+                            <span
+                              style={{
+                                fontSize: isMobile ? '0.82rem' : '0.88rem',
+                                fontWeight: 800,
+                                color: opt.color,
+                                minWidth: '36px',
+                                textAlign: 'right',
+                              }}
+                            >
                               {pct}%
                             </span>
                           </div>
@@ -481,17 +565,18 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                     animate={{ opacity: 1, y: 0 }}
                     style={{
                       marginTop: '14px',
-                      padding: '8px 12px',
+                      padding: isMobile ? '10px 12px' : '8px 12px',
                       background: 'rgba(37, 99, 235, 0.08)',
                       border: '1px dashed #2563EB',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',
-                      fontSize: '0.8rem',
+                      fontSize: isMobile ? '0.76rem' : '0.8rem',
                       color: '#2563EB',
+                      lineHeight: 1.4,
                     }}
                   >
-                    <Sparkles size={14} flexShrink={0} />
+                    <Sparkles size={16} flexShrink={0} />
                     <span>
                       <strong>Instant Sync Simulated:</strong> In an active session, this vote broadcasts to the presenter screen in &lt; 10ms!
                     </span>
@@ -501,11 +586,20 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
             </div>
           </div>
 
-          {/* Right Column: Embedded Auth Form & Quick Join (Sticky on Desktop) */}
+          {/* Right Column: Embedded Auth Form & Quick Join (Sticky on Desktop, Stacked on Mobile) */}
           {authComponent && (
-            <div id="auth-portal-section" style={{ position: 'sticky', top: '80px' }}>
+            <div
+              id="auth-portal-section"
+              style={{
+                position: isNarrow ? 'relative' : 'sticky',
+                top: isNarrow ? 'auto' : '80px',
+                marginTop: isNarrow ? '32px' : '0',
+                width: '100%',
+                minWidth: 0,
+              }}
+            >
               {authComponent}
-              {quickJoinComponent && (
+              {!isNarrow && quickJoinComponent && (
                 <div style={{ marginTop: '20px' }}>
                   {quickJoinComponent}
                 </div>
@@ -516,24 +610,45 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
       </section>
 
       {/* 2. CORE CAPABILITIES (FEATURES GRID) */}
-      <section style={{ marginBottom: '60px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div className="stamp-seal" style={{ marginBottom: '10px' }}>
+      <section style={{ marginBottom: isMobile ? '40px' : '60px', width: '100%' }}>
+        <div style={{ textAlign: 'center', marginBottom: isMobile ? '24px' : '32px' }}>
+          <div className="stamp-seal" style={{ marginBottom: '10px', fontSize: isMobile ? '0.7rem' : '0.78rem' }}>
             CAPABILITIES &amp; SPECIFICATIONS
           </div>
-          <h2 style={{ fontSize: 'clamp(1.8rem, 3.2vw, 2.4rem)', color: '#2B2B2B', marginBottom: '10px', fontFamily: "'Special Elite', monospace" }}>
+          <h2
+            style={{
+              fontSize: isMobile ? '1.5rem' : 'clamp(1.8rem, 3.2vw, 2.4rem)',
+              color: '#2B2B2B',
+              marginBottom: '10px',
+              fontFamily: "'Special Elite', monospace",
+            }}
+          >
             Why Presenters Choose PulseCast
           </h2>
-          <p style={{ color: '#555555', fontSize: '0.94rem', maxWidth: '640px', margin: '0 auto' }}>
+          <p
+            style={{
+              color: '#555555',
+              fontSize: isMobile ? '0.86rem' : '0.94rem',
+              maxWidth: '640px',
+              margin: '0 auto',
+              padding: '0 8px',
+            }}
+          >
             Built for universities, high-growth startups, engineering conferences, and agile teams who demand reliability and tactile elegance.
           </p>
         </div>
 
         <div
+          className="landing-features-grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-            gap: '20px',
+            gridTemplateColumns: isMobile
+              ? '1fr'
+              : isTablet
+              ? 'repeat(2, 1fr)'
+              : 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: isMobile ? '14px' : '20px',
+            width: '100%',
           }}
         >
           {FEATURES.map((feat, idx) => {
@@ -550,12 +665,14 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                 style={{
                   background: '#FAFAFA',
                   border: '2px solid #2B2B2B',
-                  boxShadow: '5px 5px 0px rgba(43, 43, 43, 0.18)',
-                  padding: '24px 20px',
+                  boxShadow: isMobile ? '4px 4px 0px rgba(43, 43, 43, 0.18)' : '5px 5px 0px rgba(43, 43, 43, 0.18)',
+                  padding: isMobile ? '18px 16px' : '24px 20px',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '12px',
                   position: 'relative',
+                  width: '100%',
+                  boxSizing: 'border-box',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -569,6 +686,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                       alignItems: 'center',
                       justifyContent: 'center',
                       border: '1px solid #2B2B2B',
+                      flexShrink: 0,
                     }}
                   >
                     <Icon size={20} />
@@ -588,7 +706,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                   </span>
                 </div>
 
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#2B2B2B', fontFamily: "'Special Elite', monospace" }}>
+                <h3 style={{ fontSize: '1.08rem', fontWeight: 800, color: '#2B2B2B', fontFamily: "'Special Elite', monospace" }}>
                   {feat.title}
                 </h3>
                 <p style={{ fontSize: '0.86rem', color: '#555555', lineHeight: 1.55 }}>
@@ -601,31 +719,45 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
       </section>
 
       {/* 3. HOW IT WORKS TIMELINE */}
-      <section style={{ marginBottom: '60px' }}>
+      <section style={{ marginBottom: isMobile ? '40px' : '60px', width: '100%' }}>
         <div
           className="glass-panel"
           style={{
             background: '#FAFAFA',
             border: '2px solid #2B2B2B',
-            boxShadow: '8px 8px 0px rgba(43, 43, 43, 0.2)',
-            padding: '36px 28px',
+            boxShadow: isMobile ? '4px 4px 0px rgba(43, 43, 43, 0.2)' : '8px 8px 0px rgba(43, 43, 43, 0.2)',
+            padding: isMobile ? '24px 16px' : '36px 28px',
+            width: '100%',
+            boxSizing: 'border-box',
           }}
         >
-          <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-            <div className="stamp-seal" style={{ marginBottom: '10px' }}>
+          <div style={{ textAlign: 'center', marginBottom: isMobile ? '24px' : '36px' }}>
+            <div className="stamp-seal" style={{ marginBottom: '10px', fontSize: isMobile ? '0.7rem' : '0.78rem' }}>
               THREE SIMPLE STEPS
             </div>
-            <h2 style={{ fontSize: 'clamp(1.7rem, 3vw, 2.2rem)', color: '#2B2B2B', fontFamily: "'Special Elite', monospace" }}>
+            <h2
+              style={{
+                fontSize: isMobile ? '1.45rem' : 'clamp(1.7rem, 3vw, 2.2rem)',
+                color: '#2B2B2B',
+                fontFamily: "'Special Elite', monospace",
+              }}
+            >
               How a Live Session Runs
             </h2>
           </div>
 
           <div
+            className="landing-steps-grid"
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              gap: '24px',
+              gridTemplateColumns: isMobile
+                ? '1fr'
+                : isTablet
+                ? 'repeat(auto-fit, minmax(240px, 1fr))'
+                : 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: isMobile ? '16px' : '24px',
               position: 'relative',
+              width: '100%',
             }}
           >
             {HOW_IT_WORKS.map((step, idx) => {
@@ -640,15 +772,17 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                   style={{
                     border: '1px solid #2B2B2B',
                     background: '#FFFFFF',
-                    padding: '24px 20px',
+                    padding: isMobile ? '18px 16px' : '24px 20px',
                     boxShadow: '4px 4px 0px rgba(43, 43, 43, 0.12)',
                     position: 'relative',
+                    width: '100%',
+                    boxSizing: 'border-box',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                     <span
                       style={{
-                        fontSize: '1.8rem',
+                        fontSize: isMobile ? '1.5rem' : '1.8rem',
                         fontWeight: 900,
                         color: '#DC2626',
                         fontFamily: "'Special Elite', monospace",
@@ -659,8 +793,8 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                     </span>
                     <div
                       style={{
-                        width: '36px',
-                        height: '36px',
+                        width: '34px',
+                        height: '34px',
                         background: '#2B2B2B',
                         color: '#FFFFFF',
                         display: 'flex',
@@ -668,14 +802,22 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                         justifyContent: 'center',
                       }}
                     >
-                      <Icon size={18} />
+                      <Icon size={17} />
                     </div>
                   </div>
 
-                  <h3 style={{ fontSize: '1.08rem', fontWeight: 800, color: '#2B2B2B', marginBottom: '8px', fontFamily: "'Special Elite', monospace" }}>
+                  <h3
+                    style={{
+                      fontSize: '1.05rem',
+                      fontWeight: 800,
+                      color: '#2B2B2B',
+                      marginBottom: '8px',
+                      fontFamily: "'Special Elite', monospace",
+                    }}
+                  >
                     {step.title}
                   </h3>
-                  <p style={{ fontSize: '0.86rem', color: '#555555', lineHeight: 1.55 }}>
+                  <p style={{ fontSize: '0.85rem', color: '#555555', lineHeight: 1.55 }}>
                     {step.desc}
                   </p>
                 </motion.div>
@@ -686,17 +828,23 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
       </section>
 
       {/* 4. FREQUENTLY ASKED QUESTIONS */}
-      <section style={{ marginBottom: '40px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div className="stamp-seal" style={{ marginBottom: '10px' }}>
+      <section style={{ marginBottom: isMobile ? '32px' : '40px', width: '100%' }}>
+        <div style={{ textAlign: 'center', marginBottom: isMobile ? '20px' : '28px' }}>
+          <div className="stamp-seal" style={{ marginBottom: '10px', fontSize: isMobile ? '0.7rem' : '0.78rem' }}>
             QUESTIONS &amp; ANSWERS
           </div>
-          <h2 style={{ fontSize: 'clamp(1.6rem, 2.8vw, 2.1rem)', color: '#2B2B2B', fontFamily: "'Special Elite', monospace" }}>
+          <h2
+            style={{
+              fontSize: isMobile ? '1.4rem' : 'clamp(1.6rem, 2.8vw, 2.1rem)',
+              color: '#2B2B2B',
+              fontFamily: "'Special Elite', monospace",
+            }}
+          >
             Frequently Asked Questions
           </h2>
         </div>
 
-        <div style={{ maxWidth: '820px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ maxWidth: '820px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
           {FAQS.map((faq, idx) => {
             const isOpen = openFaq === idx;
             return (
@@ -706,6 +854,8 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                   background: '#FAFAFA',
                   border: '1px solid #2B2B2B',
                   boxShadow: '3px 3px 0px rgba(43, 43, 43, 0.15)',
+                  width: '100%',
+                  boxSizing: 'border-box',
                 }}
               >
                 <button
@@ -713,7 +863,7 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                   onClick={() => setOpenFaq(isOpen ? null : idx)}
                   style={{
                     width: '100%',
-                    padding: '16px 18px',
+                    padding: isMobile ? '13px 14px' : '16px 18px',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
@@ -722,17 +872,20 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                     cursor: 'pointer',
                     textAlign: 'left',
                     fontFamily: "'Special Elite', monospace",
-                    fontSize: '0.94rem',
+                    fontSize: isMobile ? '0.86rem' : '0.94rem',
                     fontWeight: 800,
                     color: '#2B2B2B',
-                    gap: '12px',
+                    gap: '10px',
+                    boxSizing: 'border-box',
                   }}
                 >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1, lineHeight: 1.35 }}>
                     <HelpCircle size={16} color="#2563EB" flexShrink={0} />
-                    {faq.q}
+                    <span>{faq.q}</span>
                   </span>
-                  {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+                    {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </span>
                 </button>
 
                 <AnimatePresence>
@@ -746,10 +899,10 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
                     >
                       <div
                         style={{
-                          padding: '0 18px 16px 44px',
-                          fontSize: '0.88rem',
+                          padding: isMobile ? '10px 14px 14px 14px' : '0 18px 16px 44px',
+                          fontSize: isMobile ? '0.84rem' : '0.88rem',
                           color: '#555555',
-                          lineHeight: 1.6,
+                          lineHeight: 1.55,
                           borderTop: '1px dashed #E0DDD5',
                         }}
                       >
@@ -768,24 +921,35 @@ export default function LandingInfo({ authComponent, quickJoinComponent, onScrol
       <footer
         style={{
           textAlign: 'center',
-          paddingTop: '30px',
+          paddingTop: isMobile ? '20px' : '30px',
           borderTop: '1px dashed #2B2B2B',
           color: '#777777',
-          fontSize: '0.8rem',
+          fontSize: isMobile ? '0.74rem' : '0.8rem',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           gap: '8px',
+          width: '100%',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexWrap: 'wrap',
+            gap: isMobile ? '4px 8px' : '8px',
+            textAlign: 'center',
+            lineHeight: 1.4,
+          }}
+        >
           <span>PulseCast Live Audience Polling Engine</span>
           <span>•</span>
           <span>Go + MongoDB + Redis + WebSockets</span>
           <span>•</span>
           <span>MIT Open License</span>
         </div>
-        <div style={{ fontSize: '0.74rem' }}>
+        <div style={{ fontSize: isMobile ? '0.7rem' : '0.74rem', textAlign: 'center' }}>
           Designed with tactile vintage ballot paper textures &amp; brutalist 90-degree lines.
         </div>
       </footer>
