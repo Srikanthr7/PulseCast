@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Check,
@@ -15,6 +15,8 @@ import {
   Trophy,
   PartyPopper,
   LogOut,
+  Smartphone,
+  Hash,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useLivePoll } from '../hooks/useLivePoll';
@@ -22,7 +24,9 @@ import { castVote } from '../api';
 
 export default function MobileVotingScreen() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { poll, isCompleted, loading, error, isConnected } = useLivePoll(id);
+  const [inputSessionId, setInputSessionId] = useState('');
 
   // Audience Name Capture State
   const [voterName, setVoterName] = useState(() => {
@@ -177,6 +181,65 @@ export default function MobileVotingScreen() {
     setVoteError(null);
   };
 
+  // If visited /vote directly without an ID parameter
+  if (!id) {
+    return (
+      <main style={{ maxWidth: '460px', margin: '60px auto', padding: '0 20px', textAlign: 'center' }}>
+        <div className="glass-panel-glow" style={{ padding: '36px 28px', borderRadius: '20px' }}>
+          <div
+            style={{
+              width: '54px',
+              height: '54px',
+              borderRadius: '16px',
+              background: 'rgba(72, 229, 194, 0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 18px',
+              color: 'var(--accent-primary)',
+            }}
+          >
+            <Smartphone size={28} />
+          </div>
+          <h1 style={{ fontSize: '1.75rem', marginBottom: '8px', fontFamily: 'var(--font-heading)' }}>
+            Join Live Poll
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '24px' }}>
+            Enter the Unique Session ID from the presenter's screen to vote live from any device:
+          </p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (inputSessionId.trim()) {
+                navigate(`/vote/${inputSessionId.trim()}`);
+              }
+            }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
+          >
+            <input
+              type="text"
+              placeholder="e.g. 6aacb98f5be43c0cbaadccaa"
+              value={inputSessionId}
+              onChange={(e) => setInputSessionId(e.target.value)}
+              className="input-field"
+              style={{ textAlign: 'center', fontSize: '1rem', padding: '12px 16px' }}
+              autoFocus
+            />
+            <button
+              type="submit"
+              disabled={!inputSessionId.trim()}
+              className="btn-primary"
+              style={{ justifyContent: 'center', padding: '12px', fontSize: '1rem' }}
+            >
+              Join Poll
+              <ArrowRight size={18} />
+            </button>
+          </form>
+        </div>
+      </main>
+    );
+  }
+
   if (loading && !poll) {
     return (
       <div style={{ textAlign: 'center', padding: '100px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
@@ -188,15 +251,44 @@ export default function MobileVotingScreen() {
 
   if (error || !poll) {
     return (
-      <div style={{ textAlign: 'center', padding: '80px 20px', maxWidth: '420px', margin: '0 auto' }}>
-        <AlertCircle size={44} color="#ef4444" style={{ margin: '0 auto 16px' }} />
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>Poll Not Found</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>
-          {error || 'This live poll could not be located. It may have expired or the ID is invalid.'}
-        </p>
-        <Link to="/" className="btn-primary" style={{ justifyContent: 'center' }}>
-          Return to Home
-        </Link>
+      <div style={{ textAlign: 'center', padding: '60px 20px', maxWidth: '440px', margin: '0 auto' }}>
+        <div className="glass-panel" style={{ padding: '32px 24px', borderRadius: '18px' }}>
+          <AlertCircle size={40} color="#ef4444" style={{ margin: '0 auto 14px' }} />
+          <h2 style={{ fontSize: '1.4rem', marginBottom: '8px' }}>Poll Not Found</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '20px' }}>
+            {error || 'This live poll session could not be located. It may have expired or the ID is incorrect.'}
+          </p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (inputSessionId.trim()) {
+                navigate(`/vote/${inputSessionId.trim()}`);
+              }
+            }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}
+          >
+            <input
+              type="text"
+              placeholder="Enter another Session ID..."
+              value={inputSessionId}
+              onChange={(e) => setInputSessionId(e.target.value)}
+              className="input-field"
+              style={{ textAlign: 'center', fontSize: '0.9rem', padding: '10px 14px' }}
+            />
+            <button
+              type="submit"
+              disabled={!inputSessionId.trim()}
+              className="btn-primary"
+              style={{ justifyContent: 'center', padding: '10px', fontSize: '0.9rem' }}
+            >
+              Try Session ID
+              <ArrowRight size={16} />
+            </button>
+          </form>
+          <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textDecoration: 'underline' }}>
+            Return to Home
+          </Link>
+        </div>
       </div>
     );
   }

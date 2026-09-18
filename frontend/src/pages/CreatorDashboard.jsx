@@ -18,6 +18,7 @@ import {
   Target,
   Zap,
   Coffee,
+  Smartphone,
 } from 'lucide-react';
 import { createPoll, login, signup, getUser, getToken, clearAuth, getMyPolls, deletePoll } from '../api';
 
@@ -131,6 +132,7 @@ export default function CreatorDashboard() {
   const [authPassword, setAuthPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState(null);
+  const [joinSessionInput, setJoinSessionInput] = useState('');
 
   // Multi-Question Poll State (Clean blank state - presets available on demand)
   const [pollTitle, setPollTitle] = useState('');
@@ -697,6 +699,77 @@ export default function CreatorDashboard() {
         <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '620px', margin: '0 auto' }}>
           Create multiple interactive questions under a single session. Presenters can cycle questions and conclude with an animated Leaderboard!
         </p>
+      </div>
+
+      {/* Audience Quick Join with Session ID (No Wi-Fi restrictions) */}
+      <div
+        className="glass-panel"
+        style={{
+          padding: '20px 24px',
+          borderRadius: '16px',
+          marginBottom: '32px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px',
+          border: '1px solid rgba(72, 229, 194, 0.25)',
+          background: 'linear-gradient(135deg, rgba(72, 229, 194, 0.06) 0%, rgba(11, 15, 25, 0.6) 100%)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div
+            style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '12px',
+              background: 'rgba(72, 229, 194, 0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--accent-primary)',
+              flexShrink: 0,
+            }}
+          >
+            <Smartphone size={22} />
+          </div>
+          <div>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#FCFAF9', marginBottom: '3px' }}>
+              Audience Member? Join a Live Poll
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Works from any network anywhere — enter the presenter's Unique Session ID:
+            </p>
+          </div>
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (joinSessionInput.trim()) {
+              navigate(`/vote/${joinSessionInput.trim()}`);
+            }
+          }}
+          style={{ display: 'flex', gap: '8px', flex: 1, maxWidth: '420px', minWidth: '260px' }}
+        >
+          <input
+            type="text"
+            placeholder="Paste Unique Session ID..."
+            value={joinSessionInput}
+            onChange={(e) => setJoinSessionInput(e.target.value)}
+            className="input-field"
+            style={{ padding: '9px 14px', fontSize: '0.88rem' }}
+          />
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={!joinSessionInput.trim()}
+            style={{ padding: '9px 18px', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
+          >
+            Join Poll
+            <ArrowRight size={15} />
+          </button>
+        </form>
       </div>
 
       {/* Success Notification */}

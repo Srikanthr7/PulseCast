@@ -13,6 +13,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<CreatorDashboard />} />
           <Route path="/present/:id" element={<PresentationView />} />
+          <Route path="/vote" element={<MobileVotingScreen />} />
           <Route path="/vote/:id" element={<MobileVotingScreen />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -4,7 +4,6 @@ import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users,
-  WifiOff,
   Share2,
   Check,
   RefreshCw,
@@ -18,14 +17,14 @@ import {
   Flag,
   LogOut,
   Globe,
-  Edit3,
-  Wifi,
   Smartphone,
   Activity,
+  Hash,
+  Copy,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useLivePoll } from '../hooks/useLivePoll';
-import { completePoll, updatePollStatus, getNetworkIP } from '../api';
+import { completePoll, updatePollStatus } from '../api';
 import AnimatedBar from '../components/AnimatedBar';
 import Leaderboard from '../components/Leaderboard';
 
@@ -33,76 +32,24 @@ export default function PresentationView() {
   const { id } = useParams();
   const { poll, isCompleted, voterNames, loading, error, isConnected, refetch } = useLivePoll(id);
   const [copied, setCopied] = useState(false);
+  const [copiedId, setCopiedId] = useState(false);
   const [viewMode, setViewMode] = useState('live'); // 'live' | 'leaderboard'
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(0);
 
-  // Determine whether running on local development (localhost / 127.0.0.1) or live production
-  const isLocalhost = typeof window !== 'undefined' && (
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1' ||
-    window.location.hostname === '0.0.0.0'
-  );
+  // Compute the scannable vote URL directly from window.location.origin
+  // No Wi-Fi restrictions — participants join from any internet connection anywhere in the world
+  const voteUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/vote/${id}`
+    : `http://localhost:5173/vote/${id}`;
 
-  // Network IP Detection for Scannable Phone QR Codes (Local Dev Only)
-  const [networkHost, setNetworkHost] = useState(() => {
-    if (typeof window !== 'undefined') {
-      if (isLocalhost) {
-        const custom = localStorage.getItem('pulsecast_custom_ip');
-        if (custom) return custom;
-      }
-      return window.location.hostname;
+  const handleCopyId = () => {
+    if (navigator.clipboard && id) {
+      navigator.clipboard.writeText(id);
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2000);
     }
-    return '';
-  });
-  const [isEditingHost, setIsEditingHost] = useState(false);
-  const [customHostInput, setCustomHostInput] = useState('');
-
-  // Auto-detect outbound LAN IP on mount (only relevant for local development)
-  useEffect(() => {
-    async function resolveIP() {
-      if (typeof window === 'undefined') return;
-      if (!isLocalhost) {
-        setNetworkHost(window.location.hostname);
-        return;
-      }
-      const saved = localStorage.getItem('pulsecast_custom_ip');
-      if (saved) {
-        setNetworkHost(saved);
-        return;
-      }
-      try {
-        const detectedIP = await getNetworkIP();
-        if (detectedIP && detectedIP !== 'localhost' && detectedIP !== '127.0.0.1') {
-          setNetworkHost(detectedIP);
-        }
-      } catch (e) {
-        // ignore
-      }
-    }
-    resolveIP();
-  }, [isLocalhost]);
-
-  // Compute the scannable vote URL:
-  // In production (Vercel, Render, cloud domain), NEVER inject port 5173 and use window.location.origin (HTTPS)
-  // In local development, use the detected Wi-Fi LAN IP or localhost with the dev port
-  const currentHost = networkHost || (typeof window !== 'undefined' ? window.location.hostname : 'localhost');
-  
-  let voteUrl = '';
-  if (typeof window !== 'undefined') {
-    if (!isLocalhost && (!networkHost || networkHost === window.location.hostname)) {
-      // Production domain: https://pulse-cast-zeta.vercel.app/vote/:id (no dev port)
-      voteUrl = `${window.location.origin}/vote/${id}`;
-    } else if (networkHost && networkHost !== 'localhost' && networkHost !== '127.0.0.1') {
-      // Local dev Wi-Fi IP override for mobile devices
-      const port = window.location.port ? `:${window.location.port}` : (isLocalhost ? ':5173' : '');
-      const protocol = window.location.protocol || 'http:';
-      voteUrl = `${protocol}//${networkHost}${port}/vote/${id}`;
-    } else {
-      // Localhost fallback
-      voteUrl = `${window.location.origin}/vote/${id}`;
-    }
-  }
+  };
 
   // Automatically switch to leaderboard when status is completed or isCompleted WebSocket event arrives
   useEffect(() => {
@@ -264,7 +211,7 @@ export default function PresentationView() {
             </div>
           ) : (
             <div className="live-badge" style={{ background: 'rgba(245, 158, 11, 0.15)', borderColor: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' }}>
-              <WifiOff size={12} />
+              <RefreshCw size={12} className="animate-spin" />
               RECONNECTING TO WEBSOCKET...
             </div>
           )}
@@ -473,106 +420,78 @@ export default function PresentationView() {
                 Scan to Vote Live
               </h2>
 
-              {/* Host / Deployment Status Badge */}
+              {/* Unique Session ID Card */}
               <div
                 style={{
                   display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
                   gap: '6px',
-                  fontSize: '0.78rem',
-                  color: isLocalhost && (currentHost === 'localhost' || currentHost === '127.0.0.1') ? '#fbbf24' : '#34d399',
-                  background: isLocalhost && (currentHost === 'localhost' || currentHost === '127.0.0.1') ? 'rgba(251, 191, 36, 0.12)' : 'rgba(52, 211, 153, 0.12)',
-                  border: `1px solid ${isLocalhost && (currentHost === 'localhost' || currentHost === '127.0.0.1') ? 'rgba(251, 191, 36, 0.3)' : 'rgba(52, 211, 153, 0.3)'}`,
-                  borderRadius: '999px',
-                  padding: '5px 12px',
-                  marginBottom: '16px',
+                  marginBottom: '20px',
+                  padding: '14px 20px',
+                  borderRadius: '14px',
+                  background: 'rgba(72, 229, 194, 0.08)',
+                  border: '1px solid rgba(72, 229, 194, 0.35)',
+                  maxWidth: '320px',
+                  width: '100%',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
                 }}
               >
-                {isLocalhost ? <Wifi size={13} /> : <Globe size={13} />}
-                <span>
-                  {!isLocalhost
-                    ? `Live Cloud: ${window.location.host}`
-                    : currentHost === 'localhost' || currentHost === '127.0.0.1'
-                    ? 'Localhost (Enter Wi-Fi IP below to scan from phone)'
-                    : `Wi-Fi Host: ${currentHost}`}
-                </span>
-                {isLocalhost && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditingHost(!isEditingHost);
-                      setCustomHostInput(currentHost);
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'inherit',
-                      cursor: 'pointer',
-                      padding: '0 4px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      textDecoration: 'underline',
-                      fontSize: '0.75rem',
-                      fontWeight: 600,
-                    }}
-                    title="Change IP address for phone QR scanning"
-                  >
-                    <Edit3 size={11} style={{ marginRight: '3px' }} />
-                    {isEditingHost ? 'Cancel' : 'Change'}
-                  </button>
-                )}
-              </div>
-
-              {/* Custom IP Input Dialog */}
-              {isEditingHost && (
                 <div
                   style={{
                     display: 'flex',
-                    gap: '6px',
-                    marginBottom: '16px',
-                    width: '100%',
-                    maxWidth: '300px',
+                    alignItems: 'center',
+                    gap: '5px',
+                    fontSize: '0.72rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.12em',
+                    fontWeight: 700,
+                    color: 'var(--accent-cyan)',
                   }}
                 >
-                  <input
-                    type="text"
-                    placeholder="e.g. 192.168.1.50"
-                    value={customHostInput}
-                    onChange={(e) => setCustomHostInput(e.target.value)}
+                  <Hash size={13} />
+                  <span>Unique Session ID</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+                  <code
                     style={{
-                      flex: 1,
-                      padding: '7px 10px',
-                      fontSize: '0.8rem',
-                      borderRadius: 'var(--radius-sm)',
-                      background: 'rgba(0, 0, 0, 0.6)',
-                      border: '1px solid var(--border-subtle)',
-                      color: '#ffffff',
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (customHostInput.trim()) {
-                        localStorage.setItem('pulsecast_custom_ip', customHostInput.trim());
-                        setNetworkHost(customHostInput.trim());
-                      }
-                      setIsEditingHost(false);
-                    }}
-                    style={{
-                      padding: '7px 12px',
-                      fontSize: '0.8rem',
-                      background: 'var(--accent-primary)',
-                      color: '#000000',
-                      border: 'none',
-                      borderRadius: 'var(--radius-sm)',
-                      cursor: 'pointer',
+                      fontSize: '1rem',
                       fontWeight: 700,
+                      fontFamily: 'monospace',
+                      color: '#FCFAF9',
+                      letterSpacing: '0.04em',
+                      background: 'rgba(0, 0, 0, 0.45)',
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
                     }}
                   >
-                    Save
+                    {id}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={handleCopyId}
+                    title="Copy Session ID"
+                    style={{
+                      background: copiedId ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+                      border: copiedId ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.2)',
+                      borderRadius: '6px',
+                      color: copiedId ? '#34d399' : '#FCFAF9',
+                      cursor: 'pointer',
+                      padding: '5px 10px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    {copiedId ? <Check size={13} color="#34d399" /> : <Copy size={13} />}
+                    {copiedId ? 'Copied' : 'Copy'}
                   </button>
                 </div>
-              )}
+              </div>
 
               {/* QR Code Container on pure Bright Snow background */}
               <div
@@ -585,13 +504,13 @@ export default function PresentationView() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginBottom: '20px',
+                  marginBottom: '16px',
                   maxWidth: '100%',
                 }}
               >
                 <QRCodeSVG
                   value={voteUrl}
-                  size={220}
+                  size={210}
                   level="H"
                   includeMargin={false}
                   fgColor="#000000"
@@ -600,26 +519,24 @@ export default function PresentationView() {
                 />
               </div>
 
-              {/* Join Tip / Instructions */}
+              {/* Universal Network Joining Note */}
               <p
                 style={{
-                  fontSize: '0.78rem',
+                  fontSize: '0.8rem',
                   color: 'var(--text-muted)',
-                  marginBottom: '14px',
-                  maxWidth: '300px',
-                  lineHeight: 1.4,
+                  marginBottom: '16px',
+                  maxWidth: '310px',
+                  lineHeight: 1.45,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '6px',
                 }}
               >
-                <Smartphone size={15} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+                <Globe size={14} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
                 <span>
-                  <strong style={{ color: 'var(--text-secondary)' }}>Tip:</strong>{' '}
-                  {isLocalhost
-                    ? 'Connect your phone to the same Wi-Fi network to scan and vote.'
-                    : 'Scan with any mobile camera or open the link below to vote.'}
+                  <strong style={{ color: 'var(--text-secondary)' }}>Any Network:</strong>{' '}
+                  Scan QR code or enter the Session ID above from any device or connection.
                 </span>
               </p>
 

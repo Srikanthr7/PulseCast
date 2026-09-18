@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Activity, Presentation, PlusCircle, User, LogOut } from 'lucide-react';
+import { Activity, Presentation, PlusCircle, User, LogOut, Smartphone } from 'lucide-react';
 import { getUser, clearAuth } from '../api';
 
 export default function Header() {
@@ -109,6 +109,30 @@ export default function Header() {
           alignItems: 'center',
           gap: '12px',
         }}>
+          {/* Join Poll link for participants */}
+          <Link
+            to="/vote"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              borderRadius: '14px',
+              fontSize: '0.85rem',
+              fontWeight: location.pathname.startsWith('/vote') ? 700 : 500,
+              textDecoration: 'none',
+              color: location.pathname.startsWith('/vote') ? '#000000' : '#F8FAFC',
+              background: location.pathname.startsWith('/vote') ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'rgba(255, 255, 255, 0.04)',
+              border: location.pathname.startsWith('/vote') ? '1px solid rgba(255, 255, 255, 0.25)' : '1px solid rgba(255, 255, 255, 0.08)',
+              boxShadow: location.pathname.startsWith('/vote') ? '0 2px 14px rgba(72, 229, 194, 0.35)' : 'none',
+              backdropFilter: 'blur(10px)',
+              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+          >
+            <Smartphone size={15} color={location.pathname.startsWith('/vote') ? '#000000' : '#F8FAFC'} />
+            <span className="nav-btn-text">Join Poll</span>
+          </Link>
+
           {/* Creator link */}
           <Link
             to="/"
