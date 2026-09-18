@@ -20,6 +20,8 @@ import {
   Globe,
   Edit3,
   Wifi,
+  Smartphone,
+  Activity,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useLivePoll } from '../hooks/useLivePoll';
@@ -35,24 +37,32 @@ export default function PresentationView() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(0);
 
-  // Network IP Detection for Scannable Phone QR Codes
+  // Determine whether running on local development (localhost / 127.0.0.1) or live production
+  const isLocalhost = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname === '0.0.0.0'
+  );
+
+  // Network IP Detection for Scannable Phone QR Codes (Local Dev Only)
   const [networkHost, setNetworkHost] = useState(() => {
     if (typeof window !== 'undefined') {
-      const custom = localStorage.getItem('pulsecast_custom_ip');
-      if (custom) return custom;
-      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        return window.location.hostname;
+      if (isLocalhost) {
+        const custom = localStorage.getItem('pulsecast_custom_ip');
+        if (custom) return custom;
       }
+      return window.location.hostname;
     }
     return '';
   });
   const [isEditingHost, setIsEditingHost] = useState(false);
   const [customHostInput, setCustomHostInput] = useState('');
 
-  // Auto-detect outbound LAN IP on mount
+  // Auto-detect outbound LAN IP on mount (only relevant for local development)
   useEffect(() => {
     async function resolveIP() {
-      if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      if (typeof window === 'undefined') return;
+      if (!isLocalhost) {
         setNetworkHost(window.location.hostname);
         return;
       }
@@ -71,12 +81,28 @@ export default function PresentationView() {
       }
     }
     resolveIP();
-  }, []);
+  }, [isLocalhost]);
 
-  // Compute the scannable vote URL with host IP & port
+  // Compute the scannable vote URL:
+  // In production (Vercel, Render, cloud domain), NEVER inject port 5173 and use window.location.origin (HTTPS)
+  // In local development, use the detected Wi-Fi LAN IP or localhost with the dev port
   const currentHost = networkHost || (typeof window !== 'undefined' ? window.location.hostname : 'localhost');
-  const currentPort = (typeof window !== 'undefined' && window.location.port) ? window.location.port : '5173';
-  const voteUrl = `http://${currentHost}:${currentPort}/vote/${id}`;
+  
+  let voteUrl = '';
+  if (typeof window !== 'undefined') {
+    if (!isLocalhost && (!networkHost || networkHost === window.location.hostname)) {
+      // Production domain: https://pulse-cast-zeta.vercel.app/vote/:id (no dev port)
+      voteUrl = `${window.location.origin}/vote/${id}`;
+    } else if (networkHost && networkHost !== 'localhost' && networkHost !== '127.0.0.1') {
+      // Local dev Wi-Fi IP override for mobile devices
+      const port = window.location.port ? `:${window.location.port}` : (isLocalhost ? ':5173' : '');
+      const protocol = window.location.protocol || 'http:';
+      voteUrl = `${protocol}//${networkHost}${port}/vote/${id}`;
+    } else {
+      // Localhost fallback
+      voteUrl = `${window.location.origin}/vote/${id}`;
+    }
+  }
 
   // Automatically switch to leaderboard when status is completed or isCompleted WebSocket event arrives
   useEffect(() => {
@@ -447,50 +473,54 @@ export default function PresentationView() {
                 Scan to Vote Live
               </h2>
 
-              {/* Wi-Fi Host IP Badge & Manual Override */}
+              {/* Host / Deployment Status Badge */}
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
                   fontSize: '0.78rem',
-                  color: currentHost === 'localhost' || currentHost === '127.0.0.1' ? '#fbbf24' : '#34d399',
-                  background: currentHost === 'localhost' || currentHost === '127.0.0.1' ? 'rgba(251, 191, 36, 0.12)' : 'rgba(52, 211, 153, 0.12)',
-                  border: `1px solid ${currentHost === 'localhost' || currentHost === '127.0.0.1' ? 'rgba(251, 191, 36, 0.3)' : 'rgba(52, 211, 153, 0.3)'}`,
+                  color: isLocalhost && (currentHost === 'localhost' || currentHost === '127.0.0.1') ? '#fbbf24' : '#34d399',
+                  background: isLocalhost && (currentHost === 'localhost' || currentHost === '127.0.0.1') ? 'rgba(251, 191, 36, 0.12)' : 'rgba(52, 211, 153, 0.12)',
+                  border: `1px solid ${isLocalhost && (currentHost === 'localhost' || currentHost === '127.0.0.1') ? 'rgba(251, 191, 36, 0.3)' : 'rgba(52, 211, 153, 0.3)'}`,
                   borderRadius: '999px',
                   padding: '5px 12px',
                   marginBottom: '16px',
                 }}
               >
-                <Wifi size={13} />
+                {isLocalhost ? <Wifi size={13} /> : <Globe size={13} />}
                 <span>
-                  {currentHost === 'localhost' || currentHost === '127.0.0.1'
+                  {!isLocalhost
+                    ? `Live Cloud: ${window.location.host}`
+                    : currentHost === 'localhost' || currentHost === '127.0.0.1'
                     ? 'Localhost (Enter Wi-Fi IP below to scan from phone)'
                     : `Wi-Fi Host: ${currentHost}`}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditingHost(!isEditingHost);
-                    setCustomHostInput(currentHost);
-                  }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'inherit',
-                    cursor: 'pointer',
-                    padding: '0 4px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    textDecoration: 'underline',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                  }}
-                  title="Change IP address for phone QR scanning"
-                >
-                  <Edit3 size={11} style={{ marginRight: '3px' }} />
-                  {isEditingHost ? 'Cancel' : 'Change'}
-                </button>
+                {isLocalhost && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingHost(!isEditingHost);
+                      setCustomHostInput(currentHost);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'inherit',
+                      cursor: 'pointer',
+                      padding: '0 4px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      textDecoration: 'underline',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                    }}
+                    title="Change IP address for phone QR scanning"
+                  >
+                    <Edit3 size={11} style={{ marginRight: '3px' }} />
+                    {isEditingHost ? 'Cancel' : 'Change'}
+                  </button>
+                )}
               </div>
 
               {/* Custom IP Input Dialog */}
@@ -570,17 +600,27 @@ export default function PresentationView() {
                 />
               </div>
 
-              {/* Wi-Fi Reminder */}
+              {/* Join Tip / Instructions */}
               <p
                 style={{
                   fontSize: '0.78rem',
                   color: 'var(--text-muted)',
                   marginBottom: '14px',
-                  maxWidth: '290px',
+                  maxWidth: '300px',
                   lineHeight: 1.4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
                 }}
               >
-                📱 <strong style={{ color: 'var(--text-secondary)' }}>Tip:</strong> Connect your phone to the same Wi-Fi network as this computer to vote.
+                <Smartphone size={15} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+                <span>
+                  <strong style={{ color: 'var(--text-secondary)' }}>Tip:</strong>{' '}
+                  {isLocalhost
+                    ? 'Connect your phone to the same Wi-Fi network to scan and vote.'
+                    : 'Scan with any mobile camera or open the link below to vote.'}
+                </span>
               </p>
 
               {/* Direct Link Info */}
@@ -809,8 +849,25 @@ export default function PresentationView() {
                 }}
               >
                 <span>Live chart streaming via WebSocket &bull; {currentQVotes} votes on this question</span>
-                <span style={{ color: isConnected ? '#34d399' : '#fbbf24' }}>
-                  {isConnected ? '● Connected to Redis Live Stream' : '○ WebSocket Disconnected'}
+                <span
+                  style={{
+                    color: isConnected ? '#34d399' : '#fbbf24',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <span
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: isConnected ? '#34d399' : '#fbbf24',
+                      display: 'inline-block',
+                      boxShadow: isConnected ? '0 0 8px #34d399' : 'none',
+                    }}
+                  />
+                  {isConnected ? 'Connected to Redis Live Stream' : 'WebSocket Disconnected'}
                 </span>
               </div>
             </div>

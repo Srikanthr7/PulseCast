@@ -14,6 +14,10 @@ import {
   User,
   ListOrdered,
   RotateCcw,
+  Rocket,
+  Target,
+  Zap,
+  Coffee,
 } from 'lucide-react';
 import { createPoll, login, signup, getUser, getToken, clearAuth, getMyPolls, deletePoll } from '../api';
 
@@ -28,8 +32,9 @@ const isLightColor = (hex) => {
 
 const MULTI_QUESTION_TEMPLATES = [
   {
-    name: '🚀 Full-Stack Tech Sprint (2 Questions)',
+    name: 'Full-Stack Tech Sprint (2 Questions)',
     title: 'PulseCast Tech Sprint 2026',
+    icon: Rocket,
     questions: [
       {
         title: 'Which modern tech stack layer are you most excited to master in 2026?',
@@ -51,8 +56,9 @@ const MULTI_QUESTION_TEMPLATES = [
     ],
   },
   {
-    name: '🎯 Team Retrospective (2 Questions)',
+    name: 'Team Retrospective (2 Questions)',
     title: 'Sprint Retrospective & Health Check',
+    icon: Target,
     questions: [
       {
         title: 'How confident are you in our current release pipeline?',
@@ -74,8 +80,9 @@ const MULTI_QUESTION_TEMPLATES = [
     ],
   },
   {
-    name: '⚡ Quick Architecture Pulse (1 Question)',
+    name: 'Quick Architecture Pulse (1 Question)',
     title: 'Architecture Decision Poll',
+    icon: Zap,
     questions: [
       {
         title: 'Do you approve migrating to Redis Pub/Sub for live presentation syncing?',
@@ -88,16 +95,17 @@ const MULTI_QUESTION_TEMPLATES = [
     ],
   },
   {
-    name: '🎉 Fun Icebreaker (2 Questions)',
+    name: 'Team Social Icebreaker (2 Questions)',
     title: 'Team Social & Icebreaker',
+    icon: Coffee,
     questions: [
       {
         title: 'What fuels your best engineering focus sessions?',
         options: [
-          { text: 'Fresh dark roast espresso ☕', color: '#F3D3BD' },
-          { text: 'Lo-Fi / Synthwave music 🎧', color: '#48E5C2' },
-          { text: 'Late night quiet hours 🌙', color: '#5E5E5E' },
-          { text: 'Chilled iced water or green tea 🍵', color: '#FCFAF9' },
+          { text: 'Fresh dark roast espresso', color: '#F3D3BD' },
+          { text: 'Lo-Fi / Synthwave music', color: '#48E5C2' },
+          { text: 'Late night quiet hours', color: '#5E5E5E' },
+          { text: 'Chilled iced water or green tea', color: '#FCFAF9' },
         ],
       },
       {
@@ -354,10 +362,10 @@ export default function CreatorDashboard() {
 
     setIsSubmitting(true);
     try {
-      console.log('🚀 Submitting poll payload:', payload);
+      console.log('Submitting poll payload:', payload);
       // POST /api/polls with Bearer JWT token
       const newPoll = await createPoll(payload);
-      console.log('✅ Poll created:', newPoll);
+      console.log('Poll created successfully:', newPoll);
       const pollId = newPoll.id || newPoll._id;
 
       if (!pollId) {
@@ -750,6 +758,7 @@ export default function CreatorDashboard() {
         </span>
         {MULTI_QUESTION_TEMPLATES.map((tmpl, idx) => {
           const isSelected = pollTitle === (tmpl.title || tmpl.name);
+          const IconComp = tmpl.icon;
           return (
             <button
               key={idx}
@@ -768,8 +777,12 @@ export default function CreatorDashboard() {
                 boxShadow: isSelected ? '0 2px 12px rgba(72, 229, 194, 0.35)' : 'none',
                 backdropFilter: 'blur(10px)',
                 transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
               }}
             >
+              {IconComp && <IconComp size={15} />}
               {tmpl.name}
             </button>
           );
@@ -1102,7 +1115,8 @@ export default function CreatorDashboard() {
               </>
             ) : (
               <>
-                🚀 Launch Multi-Question Poll & Open Presentation Screen
+                <Play size={18} fill="#000000" />
+                Launch Multi-Question Poll & Open Presentation Screen
                 <ArrowRight size={20} />
               </>
             )}

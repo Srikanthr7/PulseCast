@@ -71,7 +71,7 @@ export function useLivePoll(pollId) {
 
       socket.onopen = () => {
         if (!isMountedRef.current) return;
-        console.log(`🔌 WebSocket connected to ${WS_URL}`);
+        console.log(`WebSocket connected to ${WS_URL}`);
         setIsConnected(true);
         retryCountRef.current = 0; // Reset exponential backoff on successful connection
       };
@@ -86,7 +86,7 @@ export function useLivePoll(pollId) {
           const isTargetPoll = !pollId || data.poll_id === pollId || (data.poll && (data.poll.id === pollId || data.poll._id === pollId));
 
           if (isTargetPoll) {
-            console.log('⚡ Realtime poll event received via WebSocket/Redis:', action, data);
+            console.log('Realtime poll event received via WebSocket/Redis:', action, data);
 
             if (action === 'POLL_DELETED') {
               setPoll(null);
@@ -127,7 +127,7 @@ export function useLivePoll(pollId) {
         const delay = Math.min(1000 * Math.pow(1.5, retryCountRef.current), 20000);
         retryCountRef.current += 1;
 
-        console.log(`🔄 WebSocket disconnected (code: ${event.code}). Reconnecting in ${(delay / 1000).toFixed(1)}s (attempt ${retryCountRef.current})...`);
+        console.log(`WebSocket disconnected (code: ${event.code}). Reconnecting in ${(delay / 1000).toFixed(1)}s (attempt ${retryCountRef.current})...`);
 
         reconnectTimeoutRef.current = setTimeout(() => {
           if (isMountedRef.current) {

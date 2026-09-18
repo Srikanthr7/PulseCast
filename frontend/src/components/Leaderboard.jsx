@@ -317,15 +317,23 @@ export default function Leaderboard({ poll, voterNames = [], onResume }) {
                       style={{
                         fontSize: '0.72rem',
                         fontWeight: 800,
-                        padding: '2px 8px',
+                        padding: '3px 8px',
                         borderRadius: '999px',
-                        background: '#F3D3BD',
+                        background: idx === 0 ? '#F3D3BD' : idx === 1 ? '#e2e8f0' : '#fed7aa',
                         color: '#000000',
                         textTransform: 'uppercase',
                         letterSpacing: '0.04em',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
                       }}
                     >
-                      {idx === 0 ? '👑 #1' : idx === 1 ? '🥈 #2' : '🥉 #3'}
+                      {idx === 0 ? (
+                        <Crown size={12} color="#000000" />
+                      ) : (
+                        <Medal size={12} color="#000000" />
+                      )}
+                      #{idx + 1}
                     </span>
                   ) : (
                     <CheckCircle2 size={15} color="#48E5C2" />
@@ -405,7 +413,6 @@ export default function Leaderboard({ poll, voterNames = [], onResume }) {
                 {rankedOptions.map((opt, rankIdx) => {
                   const pct = qTotalVotes > 0 ? Math.round(((opt.votes || 0) / qTotalVotes) * 100) : 0;
                   const isWinner = rankIdx === 0 && (opt.votes || 0) > 0;
-                  const medal = rankIdx === 0 ? '🥇' : rankIdx === 1 ? '🥈' : rankIdx === 2 ? '🥉' : `#${rankIdx + 1}`;
 
                   // Find voters for this question option
                   const optionVoters = (poll?.voters || []).filter(
@@ -436,7 +443,30 @@ export default function Leaderboard({ poll, voterNames = [], onResume }) {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontSize: '1.3rem' }}>{medal}</span>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '8px',
+                              background: rankIdx === 0 ? 'rgba(251, 191, 36, 0.15)' : rankIdx === 1 ? 'rgba(203, 213, 225, 0.15)' : rankIdx === 2 ? 'rgba(217, 119, 6, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                              border: rankIdx === 0 ? '1px solid rgba(251, 191, 36, 0.3)' : rankIdx === 1 ? '1px solid rgba(203, 213, 225, 0.3)' : rankIdx === 2 ? '1px solid rgba(217, 119, 6, 0.3)' : '1px solid rgba(255, 255, 255, 0.08)',
+                            }}
+                          >
+                            {rankIdx === 0 ? (
+                              <Trophy size={16} color="#fbbf24" />
+                            ) : rankIdx === 1 ? (
+                              <Medal size={16} color="#cbd5e1" />
+                            ) : rankIdx === 2 ? (
+                              <Medal size={16} color="#d97706" />
+                            ) : (
+                              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'rgba(252, 250, 249, 0.6)' }}>
+                                #{rankIdx + 1}
+                              </span>
+                            )}
+                          </span>
                           <span style={{ fontSize: '1.1rem', fontWeight: 600, color: '#FCFAF9', fontFamily: 'var(--font-heading)' }}>
                             {opt.text}
                           </span>
