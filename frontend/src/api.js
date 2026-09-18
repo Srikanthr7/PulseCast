@@ -114,6 +114,21 @@ export async function login(email, password) {
   return data;
 }
 
+/**
+ * Authenticates with Google ID token credential.
+ */
+export async function googleAuth(credential) {
+  const response = await fetch(`${API_BASE}/auth/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ credential }),
+  });
+
+  const data = await parseResponse(response, 'Google authentication failed');
+  setAuth(data.token, data.user);
+  return data;
+}
+
 // --- Poll & Voting API ---
 
 /**

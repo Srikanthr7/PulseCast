@@ -1,113 +1,68 @@
-# Implementation Plan - Phase 6: Multi-Question Builder, Fix Completion Button, and Leaderboard
+# Implementation Plan: Google OAuth Login for PulseCast
 
-We will evolve PulseCast into a full multi-question live polling platform, implement the dedicated poll completion endpoint with Redis WebSocket broadcasting, and build dynamic Leaderboard & mobile multi-question flows.
+Integrate Google OAuth 2.0 authentication into PulseCast so poll creators can securely sign in with their Google accounts in addition to the existing email/password authentication.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> - **Poll Schema Evolution**: The MongoDB `Poll` document will now embed `questions: []Question`, where each question contains its own `options: []Option`. Full backward compatibility will be maintained so single-question reads still function.
-> - **Completion Endpoint**: `POST /api/polls/:id/complete` will mark the poll as `completed`, aggregate all participating `voter_names`, and broadcast `{ "action": "POLL_COMPLETED" }` over Redis/WebSockets.
-> - **Presenter View**: Clicking "Complete Poll & Show Leaderboard" calls `POST /api/polls/:id/complete`. Upon receiving `POLL_COMPLETED`, the live chart unmounts and the `Leaderboard` component mounts, displaying the full styled list of participating `voter_names`.
-> - **Mobile Flow**: Mobile audience members can vote and navigate across multiple questions using "Next" / "Previous" navigation. When `POLL_COMPLETED` arrives, the mobile voting screen immediately locks and displays *"Thanks for participating!"*.
+> To enable Google Sign-In in production, you will need a **Google OAuth Client ID** from the [Google Cloud Console](https://console.cloud.google.com/apis/credentials):
+> 1. Create an OAuth 2.0 Client ID (Application type: **Web application**).
+> 2. Add authorized JavaScript origins (e.g. `http://localhost:5173`, `https://pulse-cast-zeta.vercel.app`).
+> 3. Provide `VITE_GOOGLE_CLIENT_ID` in `frontend/.env` and `GOOGLE_CLIENT_ID` in `backend/.env`.
+>
+> If the environment variables are not yet provided, the UI will gracefully show a setup guide when the button is clicked.
 
 ---
 
 ## Proposed Changes
 
-### 1. Go Backend (Gin, MongoDB, Redis)
+### 1. Backend (Go Gin)
 
-#### [backend/models/poll.go](file:///d:/PulseCast/backend/models/poll.go)
-- Define `Question` struct with `ID`, `Title`, and `Options []Option`.
-- Update `Poll` struct:
-  - `Questions []Question` bson:"questions" json:"questions"
-  - `Status string` bson:"status,omitempty" json:"status,omitempty"` ("active" | "completed")
-  - `Voters []VoterRecord` bson:"voters,omitempty" json:"voters,omitempty"`
-  - Update `VoterRecord` to optionally include `QuestionID primitive.ObjectID`.
-  - Update `CalculateTotalVotes()` to sum votes across all questions and options.
-- Update `CreateQuestionInput` and `CreatePollInput` to accept `{ title, questions: [{ title, options: [...] }] }`.
-- Update `VoteInput` to accept `{ question_id, option_id, voter_name }`.
+#### [MODIFY] [backend/models/user.go](file:///d:/PulseCast/backend/models/user.go)
+- Add `GoogleID` (string, omitempty) and `Avatar` (string, omitempty) to `models.User`.
+- Make `PasswordHash` omitempty in BSON serialization (Google users don't need a local password).
+- Update `models.UserResponse` and `ToResponse()` to include `Avatar`.
+- Add `GoogleAuthInput` struct `{ Credential string json:"credential" }`.
 
-#### [backend/handlers/poll_handler.go](file:///d:/PulseCast/backend/handlers/poll_handler.go)
-- **`CreatePoll`**:
-  - Accepts multiple questions (each with 2 to 4 options).
-  - Assigns unique `primitive.NewObjectID()` to each question and option.
-  - Sets `Status: "active"`.
-- **`CompletePoll` (`POST /api/polls/:id/complete`)**:
-  - Updates poll `Status` to `"completed"`.
-  - Aggregates all unique `voter_names` from the poll's `voters` array.
-  - Publishes `{ "action": "POLL_COMPLETED", "type": "POLL_COMPLETED", "poll_id": id, "poll": updatedPoll, "voter_names": voterNames }` to Redis.
-  - Returns `http.StatusOK` with `voter_names` and `poll`.
-- **`VoteOnPoll`**:
-  - Rejects votes if `poll.Status == "completed"`.
-  - Atomically increments vote count on the target question option.
-  - Appends voter record to `voters`.
+#### [MODIFY] [backend/handlers/auth_handler.go](file:///d:/PulseCast/backend/handlers/auth_handler.go)
+- Add `GoogleLogin(c *gin.Context)` handler.
+- Verify the ID token via Google's tokeninfo API (`https://oauth2.googleapis.com/tokeninfo?id_token=...`).
+- Verify audience (`aud`) against `GOOGLE_CLIENT_ID` if configured in environment.
+- Extract `email`, `name`, `sub` (Google user ID), and `picture`.
+- Look up user in MongoDB:
+  - If existing user matches email, link `google_id` and `avatar` if missing.
+  - If new user, create a user record with `Name`, `Email`, `GoogleID`, `Avatar`.
+- Generate PulseCast JWT session token and return `{ message, token, user }`.
 
-#### [backend/main.go](file:///d:/PulseCast/backend/main.go)
-- Register route: `api.POST("/polls/:id/complete", handlers.CompletePoll)`.
+#### [MODIFY] [backend/main.go](file:///d:/PulseCast/backend/main.go)
+- Register `auth.POST("/google", handlers.GoogleLogin)` in the `/api/auth` group.
 
 ---
 
-### 2. React Frontend
+### 2. Frontend (React Vite)
 
-#### [frontend/src/api.js](file:///d:/PulseCast/frontend/src/api.js)
-- Add `completePoll(pollId)` calling `POST /api/polls/:id/complete`.
-- Update `castVote(pollId, optionId, voterName, questionId)` to include `question_id`.
+#### [MODIFY] [frontend/src/api.js](file:///d:/PulseCast/frontend/src/api.js)
+- Add `googleAuth(credential)` helper function that calls `POST /api/auth/google` and sets `pulsecast_token` and `pulsecast_user`.
 
-#### [frontend/src/hooks/useLivePoll.js](file:///d:/PulseCast/frontend/src/hooks/useLivePoll.js)
-- Listen for `data.action === 'POLL_COMPLETED' || data.type === 'POLL_COMPLETED'`.
-- Store `isCompleted` and `voterNames` when received so consumers can react instantly.
+#### [MODIFY] [frontend/index.html](file:///d:/PulseCast/frontend/index.html)
+- Load the Google Identity Services client script `<script src="https://accounts.google.com/gsi/client" async defer></script>`.
 
-#### [frontend/src/pages/CreatorDashboard.jsx](file:///d:/PulseCast/frontend/src/pages/CreatorDashboard.jsx)
-- Support multiple questions:
-  - Form state: `questions: [{ title, options: [{ text, color }, ...] }]`.
-  - Each question has its own title input and 2–4 dynamic choice inputs.
-  - "+ Add Question" button to add additional question cards.
-  - Delete question button (for questions > 1).
-  - Multi-question templates (e.g. Icebreaker + Tech Stack + Feedback).
-- Submits `{ questions }` payload to `createPoll` and routes to `/present/:id`.
+#### [MODIFY] [frontend/src/pages/CreatorDashboard.jsx](file:///d:/PulseCast/frontend/src/pages/CreatorDashboard.jsx)
+- In the authentication card:
+  - Add a styled **"Continue with Google"** button with the official Google multi-colored icon.
+  - Integrate Google Identity Services (`window.google.accounts.id`).
+  - Wire up credential response callback to `googleAuth(credential)`.
+  - Handle loading, errors, and fallback messaging if `VITE_GOOGLE_CLIENT_ID` is missing.
 
-#### [frontend/src/pages/PresentationView.jsx](file:///d:/PulseCast/frontend/src/pages/PresentationView.jsx)
-- Multi-Question Navigation:
-  - In Live Mode, allows switching between Question 1, 2, 3... with question tabs / arrows.
-- Fix Completion Button:
-  - Green button calls `completePoll(id)`.
-- Leaderboard Component:
-  - When `POLL_COMPLETED` arrives (or `poll.status === 'completed'`), unmounts `LiveChart` and mounts `Leaderboard`.
-  - Displays:
-    - Ranked winner podium for each question.
-    - Prominent styled list of all participating `voter_names`.
-    - Confetti celebration.
-
-#### [frontend/src/pages/MobileVotingScreen.jsx](file:///d:/PulseCast/frontend/src/pages/MobileVotingScreen.jsx)
-- Multi-Question Flow:
-  - Displays "Question X of Y" with a progress bar.
-  - Allows navigating through questions via "Next" and "Previous" buttons.
-  - Records votes per question with voter name.
-- When `POLL_COMPLETED` message arrives:
-  - Immediately locks the screen.
-  - Displays a clean celebratory **"Thanks for participating!"** screen with their name and badge.
+#### [MODIFY] [frontend/.env.example](file:///d:/PulseCast/frontend/.env.example) & [backend/.env.example](file:///d:/PulseCast/backend/.env.example)
+- Add `VITE_GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_ID` documentation with setup instructions.
 
 ---
 
 ## Verification Plan
 
-### Automated Tests
-- Run `test_phase6.ps1` PowerShell script testing:
-  1. Health check.
-  2. Multi-question poll creation (2 questions, each with 3 options).
-  3. Voting on Question 1 and Question 2 with voter names ("Alice", "Bob", "Charlie").
-  4. Hitting `POST /api/polls/:id/complete`.
-  5. Verifying response returns `voter_names: ["Alice", "Bob", "Charlie"]` and `status: "completed"`.
-  6. Verifying voting is blocked once completed.
-
-### Manual Testing
-1. **Creator Dashboard**:
-   - Create 2 questions using "+ Add Question".
-   - Click "Create Live Poll & Open QR Code".
-2. **Mobile Voting Screen**:
-   - Join with name "Alex", vote on Question 1, click "Next", vote on Question 2.
-3. **Presenter View**:
-   - Switch between Question 1 and 2 live bars.
-   - Click "Complete Poll & Show Leaderboard".
-   - Observe LiveChart unmounts and Leaderboard mounts with voter names displayed.
-   - Observe mobile screen immediately locks and displays "Thanks for participating!".
+### Automated / Manual Verification
+1. Verify `CreatorDashboard.jsx`, `api.js`, and `index.html` have clean syntax.
+2. Verify Go models, handlers, and route definitions.
+3. Test Google Sign-In flow and verify fallback behavior when client ID is unset.
+4. Verify existing email/password authentication continues to work normally.

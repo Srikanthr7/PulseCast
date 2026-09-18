@@ -58,6 +58,7 @@ func main() {
 		{
 			auth.POST("/signup", handlers.Signup)
 			auth.POST("/login", handlers.Login)
+			auth.POST("/google", handlers.GoogleLogin)
 		}
 
 		// Protected Creator Endpoints (Guarded by JWT AuthMiddleware)

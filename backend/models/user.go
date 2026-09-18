@@ -11,7 +11,9 @@ type User struct {
 	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	Name         string             `bson:"name" json:"name"`
 	Email        string             `bson:"email" json:"email"`
-	PasswordHash string             `bson:"password_hash" json:"-"`
+	PasswordHash string             `bson:"password_hash,omitempty" json:"-"`
+	GoogleID     string             `bson:"google_id,omitempty" json:"google_id,omitempty"`
+	Avatar       string             `bson:"avatar,omitempty" json:"avatar,omitempty"`
 	CreatedAt    time.Time          `bson:"created_at" json:"created_at"`
 }
 
@@ -20,6 +22,7 @@ type UserResponse struct {
 	ID        primitive.ObjectID `json:"id"`
 	Name      string             `json:"name"`
 	Email     string             `json:"email"`
+	Avatar    string             `json:"avatar,omitempty"`
 	CreatedAt time.Time          `json:"created_at"`
 }
 
@@ -29,6 +32,7 @@ func (u *User) ToResponse() UserResponse {
 		ID:        u.ID,
 		Name:      u.Name,
 		Email:     u.Email,
+		Avatar:    u.Avatar,
 		CreatedAt: u.CreatedAt,
 	}
 }
@@ -44,4 +48,9 @@ type SignupInput struct {
 type LoginInput struct {
 	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required"`
+}
+
+// GoogleAuthInput defines the payload received when signing in with Google.
+type GoogleAuthInput struct {
+	Credential string `json:"credential" binding:"required"`
 }
