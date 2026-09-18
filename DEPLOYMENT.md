@@ -76,11 +76,12 @@ Render supports native **Go runtimes** (compiles Go directly without containers)
    - **Root Directory**: `frontend`
    - **Build Command**: `npm install && npm run build`
    - **Publish Directory**: `dist`
-4. Under **Environment Variables**, configure the API routes:
+4. Under **Environment Variables**, configure the backend URL:
    | Key | Value | Example |
    | :--- | :--- | :--- |
-   | `VITE_API_URL` | `https://<YOUR-BACKEND-URL>/api` | `https://pulsecast-backend.onrender.com/api` |
-   | `VITE_WS_URL` | `wss://<YOUR-BACKEND-URL>/api/ws` | `wss://pulsecast-backend.onrender.com/api/ws` |
+   | `VITE_BACKEND_URL` | `https://<YOUR-BACKEND-URL>` | `https://pulsecast-backend.onrender.com` |
+   | `VITE_API_URL` | `https://<YOUR-BACKEND-URL>/api` *(Optional override)* | `https://pulsecast-backend.onrender.com/api` |
+   | `VITE_WS_URL` | `wss://<YOUR-BACKEND-URL>/api/ws` *(Optional override)* | `wss://pulsecast-backend.onrender.com/api/ws` |
 5. Under **Redirects / Rewrites**:
    - **Source**: `/*`
    - **Destination**: `/index.html`

@@ -8,18 +8,30 @@ export const getHost = () => {
   return 'localhost';
 };
 
-// Target Go backend on custom production URL or local host on port 8080
-const customApi = import.meta.env?.VITE_API_URL;
-const customWs = import.meta.env?.VITE_WS_URL;
+// Target Go backend from environment variables or fallback to current host on port 8080
+const rawBackend = (import.meta.env?.VITE_BACKEND_URL || '').trim().replace(/\/+$/, '');
+const customApi = (import.meta.env?.VITE_API_URL || '').trim().replace(/\/+$/, '');
+const customWs = (import.meta.env?.VITE_WS_URL || '').trim().replace(/\/+$/, '');
+
+// Ensure backend URL has protocol if supplied without one
+let normalizedBackend = rawBackend;
+if (normalizedBackend && !/^https?:\/\//i.test(normalizedBackend)) {
+  const defaultProto = typeof window !== 'undefined' && window.location?.protocol === 'http:' ? 'http:' : 'https:';
+  normalizedBackend = `${defaultProto}//${normalizedBackend}`;
+}
 
 export const API_BASE = customApi
-  ? customApi.replace(/\/$/, '')
+  ? customApi
+  : normalizedBackend
+  ? (normalizedBackend.endsWith('/api') ? normalizedBackend : `${normalizedBackend}/api`)
   : (typeof window !== 'undefined'
       ? `http://${getHost()}:8080/api`
       : 'http://localhost:8080/api');
 
 export const WS_URL = customWs
   ? customWs
+  : normalizedBackend
+  ? `${normalizedBackend.replace(/^http(s)?:/i, (_, s) => (s ? 'wss:' : 'ws:'))}${normalizedBackend.endsWith('/api') ? '/ws' : '/api/ws'}`
   : (typeof window !== 'undefined'
       ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${getHost()}:8080/api/ws`
       : 'ws://localhost:8080/api/ws');
