@@ -17,14 +17,18 @@ import {
   LogOut,
   Smartphone,
   Hash,
+  Keyboard,
+  Monitor,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useLivePoll } from '../hooks/useLivePoll';
+import { useDeviceType } from '../hooks/useDeviceType';
 import { castVote } from '../api';
 
 export default function MobileVotingScreen() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isMobile, isLaptop } = useDeviceType();
   const { poll, isCompleted, loading, error, isConnected } = useLivePoll(id);
   const [inputSessionId, setInputSessionId] = useState('');
 
@@ -64,6 +68,15 @@ export default function MobileVotingScreen() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [voteError, setVoteError] = useState(null);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const handleCopyLink = () => {
+    if (navigator.clipboard && typeof window !== 'undefined') {
+      navigator.clipboard.writeText(window.location.href);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    }
+  };
 
   // Touch Swipe Gesture State for Mobile
   const [touchStart, setTouchStart] = useState(null);
@@ -175,6 +188,38 @@ export default function MobileVotingScreen() {
     setVotedOptions({});
     setVoteError(null);
   };
+
+  // Desktop keyboard voting shortcuts ([1], [2], [3], [4], [A], [B], [C], [D], ArrowLeft, ArrowRight)
+  useEffect(() => {
+    if (!isLaptop || !currentQ || hasVotedCurrent || !nameSubmitted || isLocked) return;
+
+    const handleKeyDown = (e) => {
+      if (['INPUT', 'TEXTAREA'].includes(e.target?.tagName)) return;
+
+      const key = e.key.toUpperCase();
+      let selectedIdx = -1;
+
+      if (['1', '2', '3', '4'].includes(e.key)) {
+        selectedIdx = parseInt(e.key, 10) - 1;
+      } else if (['A', 'B', 'C', 'D'].includes(key)) {
+        selectedIdx = key.charCodeAt(0) - 65;
+      }
+
+      if (selectedIdx >= 0 && selectedIdx < (currentQ.options?.length || 0)) {
+        const option = currentQ.options[selectedIdx];
+        if (option && option.id) {
+          handleVote(option.id);
+        }
+      } else if (e.key === 'ArrowRight' && currentQuestionIndex < questions.length - 1) {
+        setCurrentQuestionIndex((prev) => prev + 1);
+      } else if (e.key === 'ArrowLeft' && currentQuestionIndex > 0) {
+        setCurrentQuestionIndex((prev) => prev - 1);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLaptop, currentQ, hasVotedCurrent, nameSubmitted, isLocked, currentQuestionIndex, questions.length]);
 
   // If visited /vote directly without an ID parameter
   if (!id) {
@@ -524,18 +569,8 @@ export default function MobileVotingScreen() {
   // --- 3. Multi-Question Interactive Voting Screen ---
   const progressPct = ((currentQuestionIndex + 1) / questions.length) * 100;
 
-  return (
-    <main
-      style={{
-        maxWidth: '560px',
-        margin: '0 auto',
-        padding: '24px 20px 48px',
-        width: '100%',
-      }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
+  const renderVotingControls = () => (
+    <div>
       {/* Mobile Top Bar: Session Info & Name Chip */}
       <div
         style={{
@@ -560,7 +595,7 @@ export default function MobileVotingScreen() {
             }}
           />
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            {isConnected ? 'Connected' : 'Reconnecting...'}
+            {isConnected ? 'Live Connected' : 'Reconnecting...'}
           </span>
         </div>
 
@@ -616,7 +651,7 @@ export default function MobileVotingScreen() {
             Question {currentQuestionIndex + 1} of {questions.length}
           </span>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            Swipe or use buttons to navigate
+            {isMobile ? 'Swipe or tap arrows to navigate' : 'Use keyboard numbers [1-4] or arrows'}
           </span>
         </div>
 
@@ -678,9 +713,9 @@ export default function MobileVotingScreen() {
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.25 }}
           className="glass-panel"
-          style={{ padding: '28px 24px', marginBottom: '24px' }}
+          style={{ padding: isMobile ? '22px 18px' : '28px 24px', marginBottom: '24px' }}
         >
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.35, marginBottom: '20px' }}>
+          <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.45rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.35, marginBottom: '20px' }}>
             {currentQ?.title}
           </h2>
 
@@ -713,14 +748,14 @@ export default function MobileVotingScreen() {
                 <motion.button
                   key={option.id || idx}
                   whileHover={!hasVotedCurrent ? { scale: 1.01 } : {}}
-                  whileTap={!hasVotedCurrent ? { scale: 0.95 } : {}}
+                  whileTap={!hasVotedCurrent ? { scale: 0.96 } : {}}
                   onClick={() => handleVote(option.id)}
                   disabled={hasVotedCurrent || isSubmitting}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '16px 20px',
+                    padding: isMobile ? '14px 16px' : '16px 20px',
                     borderRadius: '16px',
                     border: isSelected ? '1.5px solid #48E5C2' : '1px solid rgba(255, 255, 255, 0.08)',
                     background: isSelected ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'rgba(255, 255, 255, 0.035)',
@@ -735,18 +770,18 @@ export default function MobileVotingScreen() {
                     fontFamily: 'var(--font-body)',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1 }}>
                     <span
                       style={{
-                        width: '34px',
-                        height: '34px',
-                        borderRadius: '10px',
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '9px',
                         background: isSelected ? '#000000' : 'rgba(255, 255, 255, 0.06)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontWeight: 800,
-                        fontSize: '0.9rem',
+                        fontSize: '0.85rem',
                         color: isSelected ? '#48E5C2' : '#F8FAFC',
                         border: isSelected ? 'none' : '1px solid rgba(255, 255, 255, 0.12)',
                         flexShrink: 0,
@@ -754,28 +789,45 @@ export default function MobileVotingScreen() {
                     >
                       {String.fromCharCode(65 + idx)}
                     </span>
-                    <span style={{ fontSize: '1.05rem', fontWeight: isSelected ? 700 : 600, color: isSelected ? '#000000' : '#F8FAFC' }}>
+                    <span style={{ fontSize: isMobile ? '0.96rem' : '1.05rem', fontWeight: isSelected ? 700 : 600, color: isSelected ? '#000000' : '#F8FAFC' }}>
                       {option.text}
                     </span>
                   </div>
 
-                  {isSelected && (
-                    <div
-                      style={{
-                        width: '26px',
-                        height: '26px',
-                        borderRadius: '50%',
-                        background: '#000000',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#48E5C2',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Check size={16} strokeWidth={3} />
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {!isMobile && (
+                      <span
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          color: isSelected ? '#000000' : 'var(--text-muted)',
+                          background: isSelected ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.06)',
+                          border: isSelected ? '1px solid rgba(0, 0, 0, 0.25)' : '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: '6px',
+                          padding: '2px 7px',
+                        }}
+                      >
+                        Key [{idx + 1}]
+                      </span>
+                    )}
+                    {isSelected && (
+                      <div
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          background: '#000000',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#48E5C2',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Check size={15} strokeWidth={3} />
+                      </div>
+                    )}
+                  </div>
                 </motion.button>
               );
             })}
@@ -799,7 +851,7 @@ export default function MobileVotingScreen() {
               }}
             >
               <CheckCircle2 size={16} />
-              <span>Your answer is locked and counted live on the presentation view!</span>
+              <span>Your answer is recorded live on the presentation!</span>
             </div>
           )}
         </motion.div>
@@ -814,17 +866,17 @@ export default function MobileVotingScreen() {
             onClick={() => setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))}
             className="btn-secondary"
             style={{
-              padding: '10px 18px',
-              fontSize: '0.9rem',
+              padding: '9px 16px',
+              fontSize: '0.88rem',
               gap: '6px',
               opacity: currentQuestionIndex === 0 ? 0.4 : 1,
             }}
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={16} />
             Previous
           </button>
 
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
             {currentQuestionIndex + 1} / {questions.length}
           </span>
 
@@ -834,20 +886,20 @@ export default function MobileVotingScreen() {
             onClick={() => setCurrentQuestionIndex((prev) => Math.min(questions.length - 1, prev + 1))}
             className="btn-secondary"
             style={{
-              padding: '10px 18px',
-              fontSize: '0.9rem',
+              padding: '9px 16px',
+              fontSize: '0.88rem',
               gap: '6px',
               opacity: currentQuestionIndex === questions.length - 1 ? 0.4 : 1,
             }}
           >
             Next
-            <ChevronRight size={18} />
+            <ChevronRight size={16} />
           </button>
         </div>
       )}
 
       {/* Demo testing reset button */}
-      <div style={{ textAlign: 'center', marginTop: '36px' }}>
+      <div style={{ textAlign: 'center', marginTop: '30px' }}>
         <button
           type="button"
           onClick={handleResetDeviceVotes}
@@ -855,7 +907,7 @@ export default function MobileVotingScreen() {
             background: 'none',
             border: 'none',
             color: 'var(--text-muted)',
-            fontSize: '0.75rem',
+            fontSize: '0.74rem',
             textDecoration: 'underline',
             cursor: 'pointer',
           }}
@@ -863,6 +915,116 @@ export default function MobileVotingScreen() {
           Reset device votes (Demo Testing)
         </button>
       </div>
+    </div>
+  );
+
+  // --- Render Layout ---
+  return (
+    <main
+      style={{
+        maxWidth: isLaptop ? '1120px' : '580px',
+        margin: '0 auto',
+        padding: isMobile ? '16px 14px calc(84px + var(--safe-bottom))' : '36px 24px',
+        width: '100%',
+      }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {!isMobile ? (
+        // LAPTOP / DESKTOP KIOSK STATION LAYOUT
+        <div className="kiosk-desktop-card">
+          <div>
+            {renderVotingControls()}
+          </div>
+
+          {/* Desktop Sidebar: Session Details & Keyboard Shortcuts */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Session Info Panel */}
+            <div className="glass-panel" style={{ padding: '22px 20px', borderRadius: '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Hash size={16} color="var(--accent-primary)" />
+                  <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Polling Session</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="btn-secondary"
+                  style={{ padding: '4px 8px', fontSize: '0.74rem' }}
+                >
+                  {copiedLink ? 'Copied!' : 'Copy Link'}
+                </button>
+              </div>
+
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                Session PIN: <strong style={{ color: 'var(--accent-cyan)' }}>{id}</strong>
+              </div>
+
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+                Voter Attribution: <strong style={{ color: '#fff' }}>{voterName || 'Audience Member'}</strong>
+              </div>
+
+              <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.08)', margin: '12px 0' }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: isConnected ? '#10b981' : '#f59e0b', fontSize: '0.8rem' }}>
+                <span
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: isConnected ? '#10b981' : '#f59e0b',
+                    boxShadow: isConnected ? '0 0 6px #10b981' : 'none',
+                  }}
+                />
+                <span>{isConnected ? 'Real-Time Sync Active' : 'Connecting to Redis...'}</span>
+              </div>
+            </div>
+
+            {/* Keyboard Shortcuts Helper */}
+            <div
+              className="glass-panel"
+              style={{
+                padding: '20px',
+                borderRadius: '18px',
+                background: 'rgba(72, 229, 194, 0.04)',
+                border: '1px solid rgba(72, 229, 194, 0.2)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                <Keyboard size={16} color="var(--accent-primary)" />
+                <span style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--accent-primary)' }}>
+                  Desktop Keyboard Controls
+                </span>
+              </div>
+              <ul style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.6, paddingLeft: '18px', margin: 0 }}>
+                <li>Press <strong>[1]</strong>, <strong>[2]</strong>, <strong>[3]</strong>, or <strong>[4]</strong> to cast vote</li>
+                <li>Press <strong>[←]</strong> or <strong>[→]</strong> arrow keys to switch questions</li>
+              </ul>
+            </div>
+
+            {/* Projector View Link */}
+            <Link
+              to={`/present/${id}`}
+              className="btn-secondary"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '12px',
+                fontSize: '0.88rem',
+              }}
+            >
+              <Monitor size={15} color="var(--accent-primary)" />
+              <span>Open Projector View</span>
+            </Link>
+          </div>
+        </div>
+      ) : (
+        // MOBILE APP VOTING LAYOUT
+        renderVotingControls()
+      )}
     </main>
   );
 }

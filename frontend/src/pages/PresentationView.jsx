@@ -21,21 +21,26 @@ import {
   Activity,
   Hash,
   Copy,
+  QrCode,
+  X,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useLivePoll } from '../hooks/useLivePoll';
 import { completePoll, updatePollStatus } from '../api';
+import { useDeviceType } from '../hooks/useDeviceType';
 import AnimatedBar from '../components/AnimatedBar';
 import Leaderboard from '../components/Leaderboard';
 
 export default function PresentationView() {
   const { id } = useParams();
+  const { isMobile, isLaptop } = useDeviceType();
   const { poll, isCompleted, voterNames, loading, error, isConnected, refetch } = useLivePoll(id);
   const [copied, setCopied] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
   const [viewMode, setViewMode] = useState('live'); // 'live' | 'leaderboard'
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(0);
+  const [showMobileQRModal, setShowMobileQRModal] = useState(false);
 
   // Compute the scannable vote URL directly from window.location.origin
   // No Wi-Fi restrictions — participants join from any internet connection anywhere in the world
@@ -182,6 +187,7 @@ export default function PresentationView() {
         width: '100%',
         display: 'flex',
         flexDirection: 'column',
+        paddingBottom: isMobile ? 'calc(84px + var(--safe-bottom))' : '36px',
       }}
     >
       {/* Presentation Top Banner / Bar */}
@@ -190,29 +196,29 @@ export default function PresentationView() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: '28px',
+          marginBottom: isMobile ? '16px' : '28px',
           paddingBottom: '16px',
           borderBottom: '1px solid var(--border-subtle)',
           flexWrap: 'wrap',
-          gap: '16px',
+          gap: isMobile ? '10px' : '16px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '16px', flexWrap: 'wrap' }}>
           {/* Status Badge */}
           {pollIsConcluded ? (
             <div className="live-badge" style={{ background: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#fca5a5' }}>
               <Trophy size={14} color="#f59e0b" />
-              POLL CONCLUDED &bull; FINAL LEADERBOARD
+              {isMobile ? 'CONCLUDED' : 'POLL CONCLUDED • FINAL LEADERBOARD'}
             </div>
           ) : isConnected ? (
             <div className="live-badge" style={{ background: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.4)', color: '#34d399' }}>
               <span className="live-dot" style={{ backgroundColor: '#10b981', boxShadow: '0 0 8px #10b981' }} />
-              LIVE &bull; REDIS REALTIME
+              {isMobile ? 'LIVE' : 'LIVE • REDIS REALTIME'}
             </div>
           ) : (
             <div className="live-badge" style={{ background: 'rgba(245, 158, 11, 0.15)', borderColor: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' }}>
               <RefreshCw size={12} className="animate-spin" />
-              RECONNECTING TO WEBSOCKET...
+              {isMobile ? 'RECONNECTING...' : 'RECONNECTING TO WEBSOCKET...'}
             </div>
           )}
 
@@ -229,12 +235,12 @@ export default function PresentationView() {
               type="button"
               onClick={() => setViewMode('live')}
               style={{
-                padding: '6px 14px',
+                padding: isMobile ? '6px 10px' : '6px 14px',
                 borderRadius: '8px',
                 border: 'none',
                 background: viewMode === 'live' ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'transparent',
                 color: viewMode === 'live' ? '#000000' : 'var(--text-secondary)',
-                fontSize: '0.85rem',
+                fontSize: isMobile ? '0.78rem' : '0.85rem',
                 fontWeight: viewMode === 'live' ? 700 : 500,
                 cursor: 'pointer',
                 display: 'inline-flex',
@@ -245,18 +251,18 @@ export default function PresentationView() {
               }}
             >
               <BarChart2 size={14} color={viewMode === 'live' ? '#000000' : 'currentColor'} />
-              Live Chart
+              {isMobile ? 'Chart' : 'Live Chart'}
             </button>
             <button
               type="button"
               onClick={() => setViewMode('leaderboard')}
               style={{
-                padding: '6px 14px',
+                padding: isMobile ? '6px 10px' : '6px 14px',
                 borderRadius: '8px',
                 border: 'none',
                 background: viewMode === 'leaderboard' ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'transparent',
                 color: viewMode === 'leaderboard' ? '#000000' : 'var(--text-secondary)',
-                fontSize: '0.85rem',
+                fontSize: isMobile ? '0.78rem' : '0.85rem',
                 fontWeight: viewMode === 'leaderboard' ? 700 : 500,
                 cursor: 'pointer',
                 display: 'inline-flex',
@@ -267,31 +273,31 @@ export default function PresentationView() {
               }}
             >
               <Trophy size={14} color={viewMode === 'leaderboard' ? '#000000' : '#f59e0b'} />
-              Leaderboard &amp; Voters ({voterNames.length || poll.voters?.length || 0})
+              {isMobile ? `Ranks (${voterNames.length || poll.voters?.length || 0})` : `Leaderboard & Voters (${voterNames.length || poll.voters?.length || 0})`}
             </button>
           </div>
 
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Session ID: <strong style={{ color: 'var(--text-primary)' }}>{poll.id}</strong>
+          <span style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.8rem' : '0.9rem' }}>
+            ID: <strong style={{ color: 'var(--text-primary)' }}>{poll.id}</strong>
           </span>
         </div>
 
         {/* Live Controls & Action Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px' }}>
           {/* Total Session Votes Counter */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
+              gap: '6px',
               background: 'rgba(255, 255, 255, 0.05)',
-              padding: '8px 16px',
+              padding: isMobile ? '6px 12px' : '8px 16px',
               borderRadius: 'var(--radius-full)',
               border: '1px solid var(--border-subtle)',
             }}
           >
-            <Users size={16} color="var(--accent-cyan)" />
-            <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>
+            <Users size={14} color="var(--accent-cyan)" />
+            <span style={{ fontSize: isMobile ? '0.82rem' : '0.95rem', fontWeight: 600 }}>
               <motion.span
                 key={totalSessionVotes}
                 initial={{ scale: 1.3, color: '#06b6d4' }}
@@ -300,47 +306,49 @@ export default function PresentationView() {
               >
                 {totalSessionVotes}
               </motion.span>{' '}
-              {totalSessionVotes === 1 ? 'Total Vote' : 'Total Votes'}
+              {totalSessionVotes === 1 ? 'Vote' : 'Votes'}
             </span>
           </div>
 
-          {/* Finish Poll & Show Leaderboard Button */}
-          {!pollIsConcluded ? (
-            <button
-              type="button"
-              onClick={handleCompletePoll}
-              disabled={isUpdatingStatus}
-              className="btn-primary"
-              style={{
-                background: '#48E5C2',
-                color: '#000000',
-                padding: '10px 22px',
-                fontSize: '0.92rem',
-                fontWeight: 800,
-                gap: '8px',
-                borderRadius: '16px',
-                boxShadow: '0 4px 16px rgba(72, 229, 194, 0.4)',
-                cursor: 'pointer',
-              }}
-            >
-              <Flag size={16} color="#000000" />
-              Finish Poll &amp; Show Leaderboard
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleResumePoll}
-              disabled={isUpdatingStatus}
-              className="btn-secondary"
-              style={{
-                padding: '8px 16px',
-                fontSize: '0.85rem',
-                gap: '6px',
-              }}
-            >
-              <RotateCcw size={14} />
-              Reopen Voting
-            </button>
+          {/* Finish Poll & Show Leaderboard Button (Laptop only in header) */}
+          {!isMobile && (
+            !pollIsConcluded ? (
+              <button
+                type="button"
+                onClick={handleCompletePoll}
+                disabled={isUpdatingStatus}
+                className="btn-primary"
+                style={{
+                  background: '#48E5C2',
+                  color: '#000000',
+                  padding: '10px 22px',
+                  fontSize: '0.92rem',
+                  fontWeight: 800,
+                  gap: '8px',
+                  borderRadius: '16px',
+                  boxShadow: '0 4px 16px rgba(72, 229, 194, 0.4)',
+                  cursor: 'pointer',
+                }}
+              >
+                <Flag size={16} color="#000000" />
+                Finish Poll &amp; Show Leaderboard
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleResumePoll}
+                disabled={isUpdatingStatus}
+                className="btn-secondary"
+                style={{
+                  padding: '8px 16px',
+                  fontSize: '0.85rem',
+                  gap: '6px',
+                }}
+              >
+                <RotateCcw size={14} />
+                Reopen Voting
+              </button>
+            )
           )}
 
           <button
@@ -348,7 +356,7 @@ export default function PresentationView() {
             onClick={refetch}
             className="btn-secondary"
             title="Refresh poll data from MongoDB"
-            style={{ padding: '8px 12px', fontSize: '0.85rem' }}
+            style={{ padding: isMobile ? '6px 10px' : '8px 12px', fontSize: '0.85rem' }}
           >
             <RefreshCw size={14} />
           </button>
@@ -358,7 +366,7 @@ export default function PresentationView() {
             to="/"
             className="btn-secondary"
             style={{
-              padding: '8px 14px',
+              padding: isMobile ? '6px 10px' : '8px 14px',
               fontSize: '0.85rem',
               gap: '6px',
               color: '#f87171',
@@ -369,7 +377,7 @@ export default function PresentationView() {
             title="Exit presentation and return to dashboard"
           >
             <LogOut size={14} />
-            Exit
+            <span className="laptop-only">Exit</span>
           </Link>
         </div>
       </div>
@@ -377,140 +385,720 @@ export default function PresentationView() {
       {/* Main View Mode Content: Toggle between LiveChart and Leaderboard Component */}
       <AnimatePresence mode="wait">
         {viewMode === 'live' && !pollIsConcluded ? (
-          /* Live Projector Split Screen Layout (LiveChart) */
-          <motion.div
-            key="live-view"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="presentation-grid"
-          >
-            {/* Left Column: Large QR Code & Join Instructions */}
-            <div
-              className="glass-panel-glow"
-              style={{
-                padding: '36px 28px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                textAlign: 'center',
-                position: 'relative',
-              }}
+          isMobile ? (
+            /* Mobile Presenter Remote Layout */
+            <motion.div
+              key="mobile-remote-view"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}
             >
-              <div
-                style={{
-                  fontSize: '0.8rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.12em',
-                  fontWeight: 700,
-                  color: 'var(--accent-cyan)',
-                  marginBottom: '8px',
-                }}
-              >
-                Join with your Phone
-              </div>
-              <h2
-                style={{
-                  fontSize: '1.75rem',
-                  marginBottom: '16px',
-                  fontFamily: 'var(--font-heading)',
-                }}
-              >
-                Scan to Vote Live
-              </h2>
-
-              {/* Unique Session ID Card */}
+              {/* Quick QR & Direct Join Card on Mobile */}
               <div
                 style={{
                   display: 'flex',
-                  flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '6px',
-                  marginBottom: '20px',
-                  padding: '14px 20px',
-                  borderRadius: '14px',
+                  justifyContent: 'space-between',
+                  padding: '12px 16px',
+                  borderRadius: '16px',
                   background: 'rgba(72, 229, 194, 0.08)',
-                  border: '1px solid rgba(72, 229, 194, 0.35)',
-                  maxWidth: '320px',
-                  width: '100%',
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
+                  border: '1px solid rgba(72, 229, 194, 0.25)',
                 }}
               >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '10px',
+                    background: 'rgba(72, 229, 194, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--accent-primary)',
+                  }}>
+                    <QrCode size={20} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      PIN: {id}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      Tap to open QR code scanner
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowMobileQRModal(true)}
+                  className="btn-primary"
+                  style={{ padding: '8px 14px', fontSize: '0.8rem', gap: '6px' }}
+                >
+                  <QrCode size={14} />
+                  Show QR
+                </button>
+              </div>
+
+              {/* Question Card & Live Animated Bars */}
+              <div
+                className="glass-panel"
+                style={{
+                  padding: '18px 16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '14px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span
+                    style={{
+                      fontSize: '0.78rem',
+                      color: 'var(--accent-primary)',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.08em',
+                    }}
+                  >
+                    Question {currentQIdx + 1} of {questionsList.length}
+                  </span>
+
+                  {questionsList.length > 1 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button
+                        type="button"
+                        disabled={currentQIdx === 0}
+                        onClick={() => setActiveQuestionIdx((prev) => Math.max(0, prev - 1))}
+                        className="btn-secondary"
+                        style={{
+                          padding: '8px 12px',
+                          opacity: currentQIdx === 0 ? 0.3 : 1,
+                          minHeight: '38px',
+                          minWidth: '38px',
+                        }}
+                        title="Previous Question"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={currentQIdx === questionsList.length - 1}
+                        onClick={() => setActiveQuestionIdx((prev) => Math.min(questionsList.length - 1, prev + 1))}
+                        className="btn-secondary"
+                        style={{
+                          padding: '8px 12px',
+                          opacity: currentQIdx === questionsList.length - 1 ? 0.3 : 1,
+                          minHeight: '38px',
+                          minWidth: '38px',
+                        }}
+                        title="Next Question"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <h2
+                  style={{
+                    fontSize: '1.28rem',
+                    lineHeight: 1.35,
+                    fontWeight: 800,
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  {currentQuestion?.title}
+                </h2>
+
+                {/* Animated Bars */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '4px' }}>
+                  {currentOptions.map((option, index) => {
+                    const isLeader = option.votes > 0 && option.votes === highestVotes;
+                    return (
+                      <AnimatedBar
+                        key={option.id || index}
+                        option={option}
+                        totalVotes={currentQVotes}
+                        isLeader={isLeader}
+                        index={index}
+                      />
+                    );
+                  })}
+                </div>
+
                 <div
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '5px',
-                    fontSize: '0.72rem',
+                    justifyContent: 'space-between',
+                    fontSize: '0.78rem',
+                    color: 'var(--text-muted)',
+                    paddingTop: '10px',
+                    borderTop: '1px solid var(--border-subtle)',
+                    marginTop: '6px',
+                  }}
+                >
+                  <span>{currentQVotes} votes on this question</span>
+                  <span style={{ color: isConnected ? '#34d399' : '#fbbf24' }}>
+                    {isConnected ? 'Live WebSocket' : 'Connecting...'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Tactile Mobile Presenter Action Buttons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
+                <button
+                  type="button"
+                  onClick={handleCompletePoll}
+                  disabled={isUpdatingStatus}
+                  className="btn-primary touch-target"
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    fontSize: '0.95rem',
+                    fontWeight: 800,
+                    gap: '8px',
+                  }}
+                >
+                  <Flag size={18} color="#000000" />
+                  Finish Poll &amp; Show Leaderboard
+                </button>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowMobileQRModal(true)}
+                    className="btn-secondary touch-target"
+                    style={{ padding: '12px', fontSize: '0.85rem', gap: '6px' }}
+                  >
+                    <QrCode size={16} />
+                    Show QR Code
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyUrl}
+                    className="btn-secondary touch-target"
+                    style={{ padding: '12px', fontSize: '0.85rem', gap: '6px' }}
+                  >
+                    {copied ? <Check size={16} color="#10b981" /> : <Share2 size={16} />}
+                    {copied ? 'Link Copied!' : 'Share Link'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          ) : (
+            /* Live Projector Split Screen Layout (LiveChart) for Laptop / Projector */
+            <motion.div
+              key="live-view"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="presentation-grid"
+            >
+              {/* Left Column: Large QR Code & Join Instructions */}
+              <div
+                className="glass-panel-glow"
+                style={{
+                  padding: '36px 28px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  position: 'relative',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '0.8rem',
                     textTransform: 'uppercase',
                     letterSpacing: '0.12em',
                     fontWeight: 700,
                     color: 'var(--accent-cyan)',
+                    marginBottom: '8px',
                   }}
                 >
-                  <Hash size={13} />
-                  <span>Unique Session ID</span>
+                  Join with your Phone
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-                  <code
+                <h2
+                  style={{
+                    fontSize: '1.75rem',
+                    marginBottom: '16px',
+                    fontFamily: 'var(--font-heading)',
+                  }}
+                >
+                  Scan to Vote Live
+                </h2>
+
+                {/* Unique Session ID Card */}
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '6px',
+                    marginBottom: '20px',
+                    padding: '14px 20px',
+                    borderRadius: '14px',
+                    background: 'rgba(72, 229, 194, 0.08)',
+                    border: '1px solid rgba(72, 229, 194, 0.35)',
+                    maxWidth: '320px',
+                    width: '100%',
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
+                  }}
+                >
+                  <div
                     style={{
-                      fontSize: '1rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      fontSize: '0.72rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.12em',
                       fontWeight: 700,
-                      fontFamily: 'monospace',
-                      color: '#FCFAF9',
-                      letterSpacing: '0.04em',
-                      background: 'rgba(0, 0, 0, 0.45)',
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      color: 'var(--accent-cyan)',
                     }}
                   >
-                    {id}
-                  </code>
-                  <button
-                    type="button"
-                    onClick={handleCopyId}
-                    title="Copy Session ID"
+                    <Hash size={13} />
+                    <span>Unique Session ID</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+                    <code
+                      style={{
+                        fontSize: '1rem',
+                        fontWeight: 700,
+                        fontFamily: 'monospace',
+                        color: '#FCFAF9',
+                        letterSpacing: '0.04em',
+                        background: 'rgba(0, 0, 0, 0.45)',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                      }}
+                    >
+                      {id}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={handleCopyId}
+                      title="Copy Session ID"
+                      style={{
+                        background: copiedId ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+                        border: copiedId ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.2)',
+                        borderRadius: '6px',
+                        color: copiedId ? '#34d399' : '#FCFAF9',
+                        cursor: 'pointer',
+                        padding: '5px 10px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      {copiedId ? <Check size={13} color="#34d399" /> : <Copy size={13} />}
+                      {copiedId ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* QR Code Container on pure Bright Snow background */}
+                <div
+                  className="qr-code-wrapper"
+                  style={{
+                    background: '#FCFAF9',
+                    padding: '22px',
+                    borderRadius: '16px',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: '16px',
+                    maxWidth: '100%',
+                  }}
+                >
+                  <QRCodeSVG
+                    value={voteUrl}
+                    size={210}
+                    level="H"
+                    includeMargin={false}
+                    fgColor="#000000"
+                    bgColor="#FCFAF9"
+                    style={{ maxWidth: '100%', height: 'auto' }}
+                  />
+                </div>
+
+                {/* Universal Network Joining Note */}
+                <p
+                  style={{
+                    fontSize: '0.8rem',
+                    color: 'var(--text-muted)',
+                    marginBottom: '16px',
+                    maxWidth: '310px',
+                    lineHeight: 1.45,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <Globe size={14} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+                  <span>
+                    <strong style={{ color: 'var(--text-secondary)' }}>Any Network:</strong>{' '}
+                    Scan QR code or enter the Session ID above from any device or connection.
+                  </span>
+                </p>
+
+                {/* Direct Link Info */}
+                <div style={{ maxWidth: '320px', width: '100%' }}>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                    Or point your mobile browser to:
+                  </p>
+                  <div
+                    onClick={handleCopyUrl}
                     style={{
-                      background: copiedId ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.08)',
-                      border: copiedId ? '1px solid #10b981' : '1px solid rgba(255, 255, 255, 0.2)',
-                      borderRadius: '6px',
-                      color: copiedId ? '#34d399' : '#FCFAF9',
-                      cursor: 'pointer',
-                      padding: '5px 10px',
-                      display: 'inline-flex',
+                      display: 'flex',
                       alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '0.75rem',
-                      fontWeight: 600,
+                      justifyContent: 'space-between',
+                      padding: '10px 14px',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'rgba(0, 0, 0, 0.4)',
+                      border: '1px solid var(--border-subtle)',
+                      fontSize: '0.85rem',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
                       transition: 'all 0.2s ease',
                     }}
                   >
-                    {copiedId ? <Check size={13} color="#34d399" /> : <Copy size={13} />}
-                    {copiedId ? 'Copied' : 'Copy'}
-                  </button>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '8px' }}>
+                      {voteUrl}
+                    </span>
+                    {copied ? <Check size={16} color="#10b981" /> : <Share2 size={16} />}
+                  </div>
+                  {copied && (
+                    <span style={{ fontSize: '0.75rem', color: '#10b981', display: 'block', marginTop: '4px' }}>
+                      Copied vote URL!
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* QR Code Container on pure Bright Snow background */}
+              {/* Right Column: Live Animated Spring Bar Chart */}
+              <div
+                className="glass-panel"
+                style={{
+                  padding: '36px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                }}
+              >
+                {/* Question Navigation Tabs (for multi-question polls) */}
+                {questionsList.length > 1 && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '20px',
+                      paddingBottom: '14px',
+                      borderBottom: '1px solid var(--border-subtle)',
+                      flexWrap: 'wrap',
+                      gap: '10px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      {questionsList.map((_, qIdx) => (
+                        <button
+                          key={qIdx}
+                          type="button"
+                          onClick={() => setActiveQuestionIdx(qIdx)}
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: '10px',
+                            border: qIdx === currentQIdx ? '1px solid rgba(255, 255, 255, 0.25)' : '1px solid rgba(255, 255, 255, 0.08)',
+                            background: qIdx === currentQIdx ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'rgba(255, 255, 255, 0.04)',
+                            color: qIdx === currentQIdx ? '#000000' : 'var(--text-secondary)',
+                            fontSize: '0.84rem',
+                            fontWeight: qIdx === currentQIdx ? 700 : 500,
+                            cursor: 'pointer',
+                            boxShadow: qIdx === currentQIdx ? '0 2px 10px rgba(72, 229, 194, 0.35)' : 'none',
+                            backdropFilter: 'blur(10px)',
+                            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                          }}
+                        >
+                          Question #{qIdx + 1}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <button
+                        type="button"
+                        disabled={currentQIdx === 0}
+                        onClick={() => setActiveQuestionIdx((prev) => Math.max(0, prev - 1))}
+                        className="btn-secondary"
+                        style={{ padding: '6px 10px', opacity: currentQIdx === 0 ? 0.4 : 1 }}
+                        title="Previous Question"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={currentQIdx === questionsList.length - 1}
+                        onClick={() => setActiveQuestionIdx((prev) => Math.min(questionsList.length - 1, prev + 1))}
+                        className="btn-secondary"
+                        style={{ padding: '6px 10px', opacity: currentQIdx === questionsList.length - 1 ? 0.4 : 1 }}
+                        title="Next Question"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Question Title */}
+                <div style={{ marginBottom: '28px' }}>
+                  <span
+                    style={{
+                      fontSize: '0.85rem',
+                      color: 'var(--accent-primary)',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.08em',
+                      display: 'block',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    Question {currentQIdx + 1} of {questionsList.length}
+                  </span>
+                  <h1
+                    style={{
+                      fontSize: '2.2rem',
+                      lineHeight: 1.25,
+                      fontWeight: 800,
+                      color: 'var(--text-primary)',
+                    }}
+                  >
+                    {currentQuestion?.title}
+                  </h1>
+                </div>
+
+                {/* Animated Options Bar Chart */}
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '18px',
+                    flex: 1,
+                    justifyContent: 'center',
+                  }}
+                >
+                  {currentOptions.map((option, index) => {
+                    const isLeader = option.votes > 0 && option.votes === highestVotes;
+                    return (
+                      <AnimatedBar
+                        key={option.id || index}
+                        option={option}
+                        totalVotes={currentQVotes}
+                        isLeader={isLeader}
+                        index={index}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Presenter Finish Action Bar inside the Projector Chart Panel */}
+                {!pollIsConcluded && (
+                  <div
+                    style={{
+                      marginTop: '28px',
+                      padding: '18px 24px',
+                      borderRadius: '16px',
+                      background: 'rgba(72, 229, 194, 0.12)',
+                      border: '1px solid rgba(72, 229, 194, 0.35)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '12px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Flag size={20} color="#48E5C2" />
+                      <div>
+                        <div style={{ fontSize: '0.98rem', fontWeight: 700, color: '#FCFAF9' }}>
+                          Ready to conclude this session?
+                        </div>
+                        <span style={{ fontSize: '0.82rem', color: 'rgba(252, 250, 249, 0.65)' }}>
+                          Locks voting screens and transitions projector to the final Leaderboard
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleCompletePoll}
+                      disabled={isUpdatingStatus}
+                      className="btn-primary"
+                      style={{
+                        background: '#48E5C2',
+                        color: '#333333',
+                        padding: '12px 24px',
+                        fontSize: '0.95rem',
+                        fontWeight: 700,
+                        gap: '8px',
+                        borderRadius: '16px',
+                        boxShadow: '0 4px 18px rgba(72, 229, 194, 0.45)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <Flag size={18} color="#333333" />
+                      Finish Session &amp; Show Leaderboard
+                    </button>
+                  </div>
+                )}
+
+                {/* Chart Footer Indicator */}
+                <div
+                  style={{
+                    marginTop: '24px',
+                    paddingTop: '20px',
+                    borderTop: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: '0.85rem',
+                    color: 'var(--text-muted)',
+                    flexWrap: 'wrap',
+                    gap: '10px',
+                  }}
+                >
+                  <span>Live chart streaming via WebSocket &bull; {currentQVotes} votes on this question</span>
+                  <span
+                    style={{
+                      color: isConnected ? '#34d399' : '#fbbf24',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        background: isConnected ? '#34d399' : '#fbbf24',
+                        display: 'inline-block',
+                        boxShadow: isConnected ? '0 0 8px #34d399' : 'none',
+                      }}
+                    />
+                    {isConnected ? 'Connected to Redis Live Stream' : 'WebSocket Disconnected'}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          )
+        ) : (
+          /* Leaderboard Component Mount: Unmounts LiveChart on POLL_COMPLETED */
+          <Leaderboard
+            poll={poll}
+            voterNames={voterNames}
+            onResume={handleResumePoll}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Mobile QR Code Modal */}
+      <AnimatePresence>
+        {showMobileQRModal && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.85)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px',
+            }}
+            onClick={() => setShowMobileQRModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="glass-panel-glow"
+              style={{
+                width: '100%',
+                maxWidth: '380px',
+                padding: '28px 24px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center',
+                position: 'relative',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowMobileQRModal(false)}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '36px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                }}
+              >
+                <X size={18} />
+              </button>
+
+              <div
+                style={{
+                  fontSize: '0.75rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.12em',
+                  fontWeight: 700,
+                  color: 'var(--accent-cyan)',
+                  marginBottom: '6px',
+                }}
+              >
+                Universal QR Code
+              </div>
+              <h3 style={{ fontSize: '1.35rem', fontWeight: 800, marginBottom: '16px' }}>
+                Scan to Vote Live
+              </h3>
+
+              {/* QR Code Container */}
               <div
                 className="qr-code-wrapper"
                 style={{
                   background: '#FCFAF9',
-                  padding: '22px',
+                  padding: '18px',
                   borderRadius: '16px',
                   boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: '16px',
-                  maxWidth: '100%',
                 }}
               >
                 <QRCodeSVG
                   value={voteUrl}
-                  size={210}
+                  size={200}
                   level="H"
                   includeMargin={false}
                   fgColor="#000000"
@@ -519,283 +1107,55 @@ export default function PresentationView() {
                 />
               </div>
 
-              {/* Universal Network Joining Note */}
-              <p
+              {/* Session ID Pill */}
+              <div
                 style={{
-                  fontSize: '0.8rem',
-                  color: 'var(--text-muted)',
-                  marginBottom: '16px',
-                  maxWidth: '310px',
-                  lineHeight: 1.45,
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
+                  gap: '8px',
+                  padding: '6px 12px',
+                  borderRadius: '10px',
+                  background: 'rgba(72, 229, 194, 0.1)',
+                  border: '1px solid rgba(72, 229, 194, 0.3)',
+                  marginBottom: '14px',
                 }}
               >
-                <Globe size={14} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
-                <span>
-                  <strong style={{ color: 'var(--text-secondary)' }}>Any Network:</strong>{' '}
-                  Scan QR code or enter the Session ID above from any device or connection.
-                </span>
-              </p>
-
-              {/* Direct Link Info */}
-              <div style={{ maxWidth: '320px', width: '100%' }}>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
-                  Or point your mobile browser to:
-                </p>
-                <div
-                  onClick={handleCopyUrl}
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>PIN:</span>
+                <code style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--accent-primary)' }}>
+                  {id}
+                </code>
+                <button
+                  type="button"
+                  onClick={handleCopyId}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 14px',
-                    borderRadius: 'var(--radius-md)',
-                    background: 'rgba(0, 0, 0, 0.4)',
-                    border: '1px solid var(--border-subtle)',
-                    fontSize: '0.85rem',
-                    color: 'var(--text-secondary)',
+                    background: 'none',
+                    border: 'none',
                     cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '8px' }}>
-                    {voteUrl}
-                  </span>
-                  {copied ? <Check size={16} color="#10b981" /> : <Share2 size={16} />}
-                </div>
-                {copied && (
-                  <span style={{ fontSize: '0.75rem', color: '#10b981', display: 'block', marginTop: '4px' }}>
-                    Copied vote URL!
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Right Column: Live Animated Spring Bar Chart */}
-            <div
-              className="glass-panel"
-              style={{
-                padding: '36px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-              }}
-            >
-              {/* Question Navigation Tabs (for multi-question polls) */}
-              {questionsList.length > 1 && (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginBottom: '20px',
-                    paddingBottom: '14px',
-                    borderBottom: '1px solid var(--border-subtle)',
-                    flexWrap: 'wrap',
-                    gap: '10px',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    {questionsList.map((_, qIdx) => (
-                      <button
-                        key={qIdx}
-                        type="button"
-                        onClick={() => setActiveQuestionIdx(qIdx)}
-                        style={{
-                          padding: '6px 14px',
-                          borderRadius: '10px',
-                          border: qIdx === currentQIdx ? '1px solid rgba(255, 255, 255, 0.25)' : '1px solid rgba(255, 255, 255, 0.08)',
-                          background: qIdx === currentQIdx ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'rgba(255, 255, 255, 0.04)',
-                          color: qIdx === currentQIdx ? '#000000' : 'var(--text-secondary)',
-                          fontSize: '0.84rem',
-                          fontWeight: qIdx === currentQIdx ? 700 : 500,
-                          cursor: 'pointer',
-                          boxShadow: qIdx === currentQIdx ? '0 2px 10px rgba(72, 229, 194, 0.35)' : 'none',
-                          backdropFilter: 'blur(10px)',
-                          transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                        }}
-                      >
-                        Question #{qIdx + 1}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <button
-                      type="button"
-                      disabled={currentQIdx === 0}
-                      onClick={() => setActiveQuestionIdx((prev) => Math.max(0, prev - 1))}
-                      className="btn-secondary"
-                      style={{ padding: '6px 10px', opacity: currentQIdx === 0 ? 0.4 : 1 }}
-                      title="Previous Question"
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={currentQIdx === questionsList.length - 1}
-                      onClick={() => setActiveQuestionIdx((prev) => Math.min(questionsList.length - 1, prev + 1))}
-                      className="btn-secondary"
-                      style={{ padding: '6px 10px', opacity: currentQIdx === questionsList.length - 1 ? 0.4 : 1 }}
-                      title="Next Question"
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Question Title */}
-              <div style={{ marginBottom: '28px' }}>
-                <span
-                  style={{
-                    fontSize: '0.85rem',
-                    color: 'var(--accent-primary)',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
-                    display: 'block',
-                    marginBottom: '8px',
-                  }}
-                >
-                  Question {currentQIdx + 1} of {questionsList.length}
-                </span>
-                <h1
-                  style={{
-                    fontSize: '2.2rem',
-                    lineHeight: 1.25,
-                    fontWeight: 800,
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  {currentQuestion?.title}
-                </h1>
-              </div>
-
-              {/* Animated Options Bar Chart */}
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '18px',
-                  flex: 1,
-                  justifyContent: 'center',
-                }}
-              >
-                {currentOptions.map((option, index) => {
-                  const isLeader = option.votes > 0 && option.votes === highestVotes;
-                  return (
-                    <AnimatedBar
-                      key={option.id || index}
-                      option={option}
-                      totalVotes={currentQVotes}
-                      isLeader={isLeader}
-                      index={index}
-                    />
-                  );
-                })}
-              </div>
-
-              {/* Presenter Finish Action Bar inside the Projector Chart Panel */}
-              {!pollIsConcluded && (
-                <div
-                  style={{
-                    marginTop: '28px',
-                    padding: '18px 24px',
-                    borderRadius: '16px',
-                    background: 'rgba(72, 229, 194, 0.12)',
-                    border: '1px solid rgba(72, 229, 194, 0.35)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: '12px',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Flag size={20} color="#48E5C2" />
-                    <div>
-                      <div style={{ fontSize: '0.98rem', fontWeight: 700, color: '#FCFAF9' }}>
-                        Ready to conclude this session?
-                      </div>
-                      <span style={{ fontSize: '0.82rem', color: 'rgba(252, 250, 249, 0.65)' }}>
-                        Locks voting screens and transitions projector to the final Leaderboard
-                      </span>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleCompletePoll}
-                    disabled={isUpdatingStatus}
-                    className="btn-primary"
-                    style={{
-                      background: '#48E5C2',
-                      color: '#333333',
-                      padding: '12px 24px',
-                      fontSize: '0.95rem',
-                      fontWeight: 700,
-                      gap: '8px',
-                      borderRadius: '16px',
-                      boxShadow: '0 4px 18px rgba(72, 229, 194, 0.45)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <Flag size={18} color="#333333" />
-                    Finish Session &amp; Show Leaderboard
-                  </button>
-                </div>
-              )}
-
-              {/* Chart Footer Indicator */}
-              <div
-                style={{
-                  marginTop: '24px',
-                  paddingTop: '20px',
-                  borderTop: '1px solid var(--border-subtle)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  fontSize: '0.85rem',
-                  color: 'var(--text-muted)',
-                  flexWrap: 'wrap',
-                  gap: '10px',
-                }}
-              >
-                <span>Live chart streaming via WebSocket &bull; {currentQVotes} votes on this question</span>
-                <span
-                  style={{
-                    color: isConnected ? '#34d399' : '#fbbf24',
+                    color: copiedId ? '#34d399' : 'var(--text-secondary)',
                     display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
+                    padding: '2px',
                   }}
                 >
-                  <span
-                    style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: isConnected ? '#34d399' : '#fbbf24',
-                      display: 'inline-block',
-                      boxShadow: isConnected ? '0 0 8px #34d399' : 'none',
-                    }}
-                  />
-                  {isConnected ? 'Connected to Redis Live Stream' : 'WebSocket Disconnected'}
-                </span>
+                  {copiedId ? <Check size={14} color="#34d399" /> : <Copy size={14} />}
+                </button>
               </div>
-            </div>
-          </motion.div>
-        ) : (
-          /* Leaderboard Component Mount: Unmounts LiveChart on POLL_COMPLETED */
-          <Leaderboard
-            poll={poll}
-            voterNames={voterNames}
-            onResume={handleResumePoll}
-          />
+
+              {/* Copy Vote Link */}
+              <button
+                type="button"
+                onClick={handleCopyUrl}
+                className="btn-secondary"
+                style={{ width: '100%', padding: '10px', fontSize: '0.85rem', gap: '6px' }}
+              >
+                {copied ? <Check size={14} color="#10b981" /> : <Share2 size={14} />}
+                {copied ? 'Vote URL Copied!' : 'Copy Direct Link'}
+              </button>
+
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '12px', lineHeight: 1.4 }}>
+                Participants can join from any phone or internet connection.
+              </p>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </main>

@@ -423,3 +423,117 @@ h3 {
     font-size: 1.15rem;
   }
 }
+
+/* ==========================================================================
+   Multi-Device Responsive System (Laptop vs Mobile Dedicated UI)
+   ========================================================================== */
+
+/* Device Visibility Utilities */
+@media (min-width: 768px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .laptop-only {
+    display: none !important;
+  }
+}
+
+/* Mobile Touch Optimization & Safe Area */
+:root {
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+  --safe-top: max(env(safe-area-inset-top, 0px), 0px);
+}
+
+.mobile-safe-bottom {
+  padding-bottom: calc(76px + var(--safe-bottom));
+}
+
+.touch-target {
+  min-height: 48px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Mobile Floating Bottom Dock */
+.mobile-bottom-dock {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 90;
+  background: rgba(11, 15, 25, 0.88);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 8px)) 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  text-decoration: none;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 12px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 60px;
+}
+
+.mobile-nav-item.active {
+  color: #48E5C2;
+  background: rgba(72, 229, 194, 0.12);
+  font-weight: 700;
+}
+
+/* Laptop Studio 2-Column Grid */
+.creator-studio-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 1080px) {
+  .creator-studio-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
+/* Desktop Kiosk Voting Card */
+.kiosk-desktop-card {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 32px;
+  align-items: stretch;
+}
+
+@media (max-width: 880px) {
+  .kiosk-desktop-card {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Presenter Remote Mobile Drawer */
+.presenter-mobile-remote {
+  position: sticky;
+  bottom: 0;
+  background: rgba(11, 15, 25, 0.95);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border-subtle);
+  padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+}

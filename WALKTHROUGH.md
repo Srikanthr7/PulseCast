@@ -116,3 +116,78 @@ This tests:
    - The live chart unmounts, confetti fires, and the **Leaderboard** mounts with your name in the "Participating Audience" list.
 7. In the mobile view:
    - The screen immediately locks with the **"🎉 Thanks for participating!"** screen and voter attribution badge.
+
+---
+
+## Phase 7: Multi-Device Responsive Architecture (Laptop & Desktop vs Mobile)
+
+### Overview
+We implemented a comprehensive multi-device architecture that detects the user's viewport, device capabilities, and touch input to dynamically serve dedicated, tailored user interfaces for **Laptop / Desktop** screens (`width >= 768px`) and **Mobile Devices** (`width < 768px`).
+
+---
+
+### 1. Unified Device Sensing Engine
+- **Hook**: [`useDeviceType`](file:///d:/PulseCast/frontend/src/hooks/useDeviceType.js)
+  - Exports `{ isMobile, isTablet, isLaptop, isTouch, deviceType, width, height }`.
+  - Debounced resize event listener (100ms) with SSR safety fallbacks.
+  - Automatically classifies `< 768px` as mobile, `768px–1023px` as tablet, and `>= 1024px` as laptop/desktop.
+- **CSS Utility System** ([frontend/src/index.css](file:///d:/PulseCast/frontend/src/index.css)):
+  - `.mobile-only` (`display: none` when viewport width is >= 768px).
+  - `.laptop-only` (`display: none` when viewport width is < 768px).
+  - Mobile safe area padding (`--safe-bottom: env(safe-area-inset-bottom, 0px)`).
+  - `.touch-target`: Minimum 44px height for mobile ergonomics according to Apple and Google Human Interface Guidelines.
+  - `.mobile-bottom-dock`: Floating frosted glass navigation dock for phones.
+
+---
+
+### 2. Navigation & Header
+- **Desktop / Laptop View**:
+  - Full horizontal top navigation with interactive pills: "Vote on a Poll", "Presenter Projector", "Auth Status", and live Redis connection indicator.
+- **Mobile View**:
+  - Compact header with live status dot and profile chip.
+  - **Floating Frosted Glass Bottom Dock** ([frontend/src/components/MobileBottomNav.jsx](file:///d:/PulseCast/frontend/src/components/MobileBottomNav.jsx)):
+    - **Vote**: Direct access to session join and voting.
+    - **Create**: Access to creator studio and question builder.
+    - **Projector**: 1-tap jump to the latest active presentation screen.
+    - **Account**: User profile and Google OAuth status.
+
+---
+
+### 3. Creator Dashboard (`/`)
+- **Desktop / Laptop View**:
+  - **Expansive 2-Column Studio Layout** (`.creator-studio-layout`):
+    - **Left Column (Builder Studio)**: Multi-question builder, custom options, templates, real-time validation, and launch button.
+    - **Right Column (Session Command Center)**: Sticky sidebar with live session stats, active poll history cards, direct link copying, and instant session PIN joiner.
+- **Mobile View**:
+  - **Segmented 3-Tab Controller** (`[Builder]`, `[Polls]`, `[Join PIN]`):
+    - Prevents vertical scroll fatigue on small screens.
+    - Full-width touch inputs and tactile "+ Add Option" / "+ Add Question" action buttons.
+    - Safe-area bottom spacing (`calc(84px + var(--safe-bottom))`) ensuring inputs are never occluded by the navigation dock.
+
+---
+
+### 4. Voting Screen (`/vote/:id` & `/vote`)
+- **Desktop / Laptop View**:
+  - **Interactive Desktop Station / Kiosk** (`.kiosk-desktop-card`):
+    - Left side: Full interactive question card with keyboard shortcut badges (`[1]`, `[2]`, `[3]`, `[4]` or `[A]`, `[B]`, `[C]`, `[D]`).
+    - Right side: Session station sidebar with presenter projector link, question navigation shortcuts (Left/Right arrow keys), and live Redis connection telemetry.
+    - Global keyboard event listeners allowing attendees on laptops to vote purely via keyboard.
+- **Mobile View**:
+  - Full-screen touch-optimized voting card with swipe gestures.
+  - Large thumb-friendly vote choice buttons with haptic color feedback and checkmark badges.
+  - Sticky bottom previous/next question buttons and clear progress indicators.
+
+---
+
+### 5. Presentation & Projector Screen (`/present/:id`)
+- **Desktop / Laptop / Stage Projector View**:
+  - **Grand Stage 2-Column Layout** (`.presentation-grid`):
+    - Left column: Radar-pulsing scannable QR code on bright snow card, session PIN badge, universal network join guide, and copyable URL.
+    - Right column: Question tabs, real-time animated spring bar charts, presenter action bar, and live Redis WebSocket telemetry.
+- **Mobile Presenter Remote View**:
+  - Transforms the mobile screen into a **Presenter Remote Control**:
+    - Compact top strip with active status, voter tally, and question badge.
+    - Tactile Question Navigator (`< Previous Question` / `Next Question >`).
+    - Real-time animated bar chart streaming live votes directly to the speaker's phone.
+    - **Collapsible QR Code Modal**: Tap "Show QR" to pop up the universal QR code on demand without cluttering the remote view.
+    - Full-width thumb-level action buttons: "Finish Poll & Show Leaderboard" and "Share Link".

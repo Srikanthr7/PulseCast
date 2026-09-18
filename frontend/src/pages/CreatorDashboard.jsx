@@ -19,8 +19,13 @@ import {
   Zap,
   Coffee,
   Smartphone,
+  Layers,
+  Radio,
+  Copy,
+  ExternalLink,
 } from 'lucide-react';
-import { createPoll, login, signup, getUser, getToken, clearAuth, getMyPolls, deletePoll } from '../api';
+import { createPoll, login, signup, googleAuth, getUser, getToken, clearAuth, getMyPolls, deletePoll } from '../api';
+import { useDeviceType } from '../hooks/useDeviceType';
 
 const PALETTE = ['#48E5C2', '#F3D3BD', '#FCFAF9', '#5E5E5E'];
 
@@ -134,6 +139,77 @@ export default function CreatorDashboard() {
   const [authError, setAuthError] = useState(null);
   const [joinSessionInput, setJoinSessionInput] = useState('');
 
+  const { isMobile, isLaptop } = useDeviceType();
+  const [mobileTab, setMobileTab] = useState('builder'); // 'builder' | 'sessions' | 'join'
+
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  // Handle Google OAuth ID token response from GIS
+  const handleGoogleSuccess = async (response) => {
+    if (!response || !response.credential) {
+      setAuthError('Google sign in did not return valid credentials. Please try again.');
+      return;
+    }
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      const res = await googleAuth(response.credential);
+      setCurrentUser(res.user);
+      loadMyPolls();
+    } catch (err) {
+      console.error('Google auth error:', err);
+      setAuthError(err.message || 'Google authentication failed. Please try again.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // Initialize Google Identity Services (GIS)
+  useEffect(() => {
+    if (currentUser) return;
+
+    let intervalId = null;
+    const initGoogle = () => {
+      if (window.google?.accounts?.id && googleClientId) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: handleGoogleSuccess,
+            auto_select: false,
+          });
+
+          const btnEl = document.getElementById('google-signin-btn-container');
+          if (btnEl) {
+            btnEl.innerHTML = '';
+            window.google.accounts.id.renderButton(btnEl, {
+              theme: 'outline',
+              size: 'large',
+              width: 360,
+              text: 'continue_with',
+              shape: 'rectangular',
+              logo_alignment: 'left',
+            });
+          }
+          if (intervalId) clearInterval(intervalId);
+        } catch (e) {
+          console.warn('GIS init error:', e);
+        }
+      }
+    };
+
+    initGoogle();
+    if (!window.google?.accounts?.id && googleClientId) {
+      intervalId = setInterval(initGoogle, 300);
+      setTimeout(() => {
+        if (intervalId) clearInterval(intervalId);
+      }, 5000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [currentUser, googleClientId, authMode]);
+
   // Multi-Question Poll State (Clean blank state - presets available on demand)
   const [pollTitle, setPollTitle] = useState('');
   const [questions, setQuestions] = useState([
@@ -224,6 +300,161 @@ export default function CreatorDashboard() {
     } finally {
       setDeletingPollId(null);
     }
+  };
+
+  const [copiedPollId, setCopiedPollId] = useState(null);
+
+  const handleCopyVoteLink = (pollId) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const url = `${origin}/vote/${pollId}`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+      setCopiedPollId(pollId);
+      setTimeout(() => setCopiedPollId(null), 2000);
+    }
+  };
+
+  const renderPollSessionsList = (isSidebar = false) => {
+    if (loadingPolls && myPolls.length === 0) {
+      return (
+        <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px', color: 'var(--accent-primary)' }} />
+          <p style={{ fontSize: '0.86rem' }}>Loading sessions...</p>
+        </div>
+      );
+    }
+
+    if (myPolls.length === 0) {
+      return (
+        <div className="glass-panel" style={{ padding: isSidebar ? '22px 18px' : '32px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+            You haven't created any polls yet. Design your first multi-question poll session!
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: isSidebar ? '12px' : '14px' }}>
+        {myPolls.map((p) => {
+          const qCount = p.questions?.length || (p.question ? 1 : 0);
+          const displayTitle = p.title || p.question || 'Untitled Poll Session';
+          const isCopied = copiedPollId === p.id;
+          return (
+            <div
+              key={p.id}
+              className="glass-panel"
+              style={{
+                padding: isSidebar ? '14px 16px' : '18px 20px',
+                display: 'flex',
+                flexDirection: isSidebar ? 'column' : 'row',
+                alignItems: isSidebar ? 'stretch' : 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                  <span
+                    style={{
+                      fontSize: '0.7rem',
+                      color: 'var(--accent-cyan)',
+                      background: 'rgba(72, 229, 194, 0.12)',
+                      border: '1px solid rgba(72, 229, 194, 0.3)',
+                      padding: '2px 7px',
+                      borderRadius: '6px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    PIN: {p.id.slice(0, 8)}...
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '0.7rem',
+                      color: p.status === 'completed' ? '#F3D3BD' : '#48E5C2',
+                      background: p.status === 'completed' ? 'rgba(243, 211, 189, 0.12)' : 'rgba(72, 229, 194, 0.12)',
+                      border: `1px solid ${p.status === 'completed' ? 'rgba(243, 211, 189, 0.3)' : 'rgba(72, 229, 194, 0.3)'}`,
+                      padding: '2px 7px',
+                      borderRadius: '6px',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {p.status === 'completed' ? 'Ended' : 'Live'}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    {qCount}Q &bull; {p.total_votes || 0} votes
+                  </span>
+                </div>
+                <h4 style={{
+                  fontSize: isSidebar ? '0.96rem' : '1.08rem',
+                  color: 'var(--text-primary)',
+                  marginBottom: '4px',
+                  lineHeight: 1.35,
+                  wordBreak: 'break-word',
+                }}>
+                  {displayTitle}
+                </h4>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginTop: isSidebar ? '6px' : '0' }}>
+                <Link
+                  to={`/present/${p.id}`}
+                  className="btn-primary"
+                  style={{
+                    padding: isSidebar ? '7px 12px' : '8px 16px',
+                    fontSize: isSidebar ? '0.8rem' : '0.85rem',
+                    gap: '5px',
+                    flex: isSidebar ? 1 : 'none',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Play size={13} fill="#000000" />
+                  Project
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => handleCopyVoteLink(p.id)}
+                  className="btn-secondary"
+                  style={{
+                    padding: isSidebar ? '7px 10px' : '8px 12px',
+                    fontSize: isSidebar ? '0.8rem' : '0.85rem',
+                    gap: '5px',
+                    color: isCopied ? '#10b981' : 'var(--text-secondary)',
+                    borderColor: isCopied ? '#10b981' : 'var(--border-subtle)',
+                  }}
+                  title="Copy direct voting link to clipboard"
+                >
+                  <Copy size={13} />
+                  <span>{isCopied ? 'Copied!' : 'Link'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeletePoll(p.id)}
+                  disabled={deletingPollId === p.id}
+                  className="btn-secondary"
+                  style={{
+                    padding: isSidebar ? '7px 10px' : '8px 12px',
+                    fontSize: isSidebar ? '0.8rem' : '0.85rem',
+                    color: '#ff6b6b',
+                    borderColor: 'rgba(255, 107, 107, 0.3)',
+                    background: 'rgba(255, 107, 107, 0.06)',
+                  }}
+                  title="Delete session"
+                >
+                  {deletingPollId === p.id ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <Trash2 size={13} />
+                  )}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   // --- Multi-Question Form Handlers ---
@@ -397,7 +628,15 @@ export default function CreatorDashboard() {
   // --- Render Unauthenticated State: Login / Sign Up Card ---
   if (!currentUser) {
     return (
-      <main style={{ maxWidth: '460px', margin: '50px auto', padding: '0 20px', width: '100%', position: 'relative' }}>
+      <main
+        style={{
+          maxWidth: '460px',
+          margin: isMobile ? '20px auto 90px' : '50px auto',
+          padding: isMobile ? '0 14px' : '0 20px',
+          width: '100%',
+          position: 'relative',
+        }}
+      >
         {/* Ambient Specular Halo behind card */}
         <div
           style={{
@@ -405,8 +644,8 @@ export default function CreatorDashboard() {
             top: '25%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: '320px',
-            height: '320px',
+            width: isMobile ? '240px' : '320px',
+            height: isMobile ? '240px' : '320px',
             background: 'radial-gradient(circle, rgba(72, 229, 194, 0.12) 0%, rgba(99, 102, 241, 0.08) 50%, transparent 70%)',
             borderRadius: '50%',
             filter: 'blur(60px)',
@@ -416,7 +655,7 @@ export default function CreatorDashboard() {
         />
 
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          <div style={{ textAlign: 'center', marginBottom: isMobile ? '20px' : '28px' }}>
             <div
               style={{
                 display: 'inline-flex',
@@ -436,16 +675,16 @@ export default function CreatorDashboard() {
               <ShieldCheck size={14} />
               Creator Authentication
             </div>
-            <h1 style={{ fontSize: '2.3rem', marginBottom: '8px', letterSpacing: '-0.03em' }}>
+            <h1 style={{ fontSize: isMobile ? '1.85rem' : '2.3rem', marginBottom: '8px', letterSpacing: '-0.03em' }}>
               Creator <span className="gradient-text">Portal</span>
             </h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.5 }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: isMobile ? '0.85rem' : '0.92rem', lineHeight: 1.5 }}>
               Sign in or create an account to design interactive multi-question polls with instant real-time presentations.
             </p>
           </div>
 
           {/* Auth Card with True Translucent Glass */}
-          <div className="glass-panel" style={{ padding: '32px 28px' }}>
+          <div className="glass-panel" style={{ padding: isMobile ? '24px 18px' : '32px 28px' }}>
             {/* Segmented Tab Switcher */}
             <div
               style={{
@@ -522,6 +761,93 @@ export default function CreatorDashboard() {
                 <span>{authError}</span>
               </div>
             )}
+
+            {/* Google OAuth Login Option */}
+            <div style={{ marginBottom: '18px' }}>
+              <div
+                id="google-signin-btn-container"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  width: '100%',
+                  minHeight: '44px',
+                }}
+              >
+                {/* Fallback button: triggers Google prompt or shows clear configuration instructions */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.google?.accounts?.id && googleClientId) {
+                      window.google.accounts.id.prompt();
+                    } else if (!googleClientId) {
+                      setAuthError('Google Client ID is not configured yet. Set VITE_GOOGLE_CLIENT_ID in frontend/.env to enable Google OAuth.');
+                    } else {
+                      setAuthError('Google Identity Services is initializing. Please wait a moment and try again.');
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '12px',
+                    padding: '11px 18px',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    borderRadius: '10px',
+                    color: '#ffffff',
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                    />
+                  </svg>
+                  <span>Continue with Google</span>
+                </button>
+              </div>
+
+              {/* Clean Divider */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  margin: '18px 0 6px 0',
+                  gap: '12px',
+                }}
+              >
+                <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.1)' }} />
+                <span
+                  style={{
+                    fontSize: '0.74rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    color: 'var(--text-muted)',
+                    fontWeight: 600,
+                  }}
+                >
+                  Or continue with email
+                </span>
+                <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.1)' }} />
+              </div>
+            </div>
 
             <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {authMode === 'signup' && (
@@ -617,189 +943,112 @@ export default function CreatorDashboard() {
     );
   }
 
-  // --- Render Authenticated State: Multi-Question Builder ---
-  return (
-    <main style={{ maxWidth: '840px', margin: '0 auto', padding: '40px 20px' }}>
-      {/* Creator Profile Bar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '14px 20px',
-          borderRadius: 'var(--radius-md)',
-          background: 'rgba(255, 255, 255, 0.03)',
-          border: '1px solid var(--border-subtle)',
-          marginBottom: '32px',
-          flexWrap: 'wrap',
-          gap: '12px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div
-            style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '50%',
-              background: 'var(--accent-gradient)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: '0.95rem',
-            }}
-          >
-            {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : <User size={18} />}
-          </div>
-          <div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Welcome, {currentUser.name}
-            </div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              {currentUser.email} &bull; <span style={{ color: '#10b981' }}>Verified Creator</span>
-            </div>
-          </div>
-        </div>
+  // --- Render Sub-Components for Laptop & Mobile Layouts ---
 
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="btn-secondary"
-          style={{ padding: '8px 14px', fontSize: '0.85rem', gap: '6px' }}
-        >
-          <LogOut size={14} />
-          Sign Out
-        </button>
-      </div>
-
-      {/* Header Title */}
-      <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+  const renderQuickJoinCard = () => (
+    <div
+      className="glass-panel"
+      style={{
+        padding: isMobile ? '18px 16px' : '20px 22px',
+        borderRadius: '16px',
+        border: '1px solid rgba(72, 229, 194, 0.25)',
+        background: 'linear-gradient(135deg, rgba(72, 229, 194, 0.06) 0%, rgba(11, 15, 25, 0.6) 100%)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
         <div
           style={{
-            display: 'inline-flex',
+            width: '36px',
+            height: '36px',
+            borderRadius: '10px',
+            background: 'rgba(72, 229, 194, 0.15)',
+            display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            padding: '6px 14px',
-            borderRadius: 'var(--radius-full)',
-            background: 'rgba(99, 102, 241, 0.12)',
-            border: '1px solid rgba(99, 102, 241, 0.3)',
+            justifyContent: 'center',
             color: 'var(--accent-primary)',
-            fontSize: '0.85rem',
-            fontWeight: 600,
-            marginBottom: '12px',
+            flexShrink: 0,
           }}
         >
-          <ListOrdered size={15} />
-          Multi-Question Dynamic Poll Builder
+          <Smartphone size={18} />
         </div>
-        <h1 style={{ fontSize: '2.5rem', marginBottom: '10px' }}>
-          Design Your <span className="gradient-text">Live Poll Session</span>
-        </h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '620px', margin: '0 auto' }}>
-          Create multiple interactive questions under a single session. Presenters can cycle questions and conclude with an animated Leaderboard!
-        </p>
+        <div>
+          <h3 style={{ fontSize: '0.98rem', fontWeight: 700, color: '#FCFAF9', marginBottom: '2px' }}>
+            Audience Quick Join
+          </h3>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+            Enter presenter's Session PIN to vote:
+          </p>
+        </div>
       </div>
 
-      {/* Audience Quick Join with Session ID (No Wi-Fi restrictions) */}
-      <div
-        className="glass-panel"
-        style={{
-          padding: '20px 24px',
-          borderRadius: '16px',
-          marginBottom: '32px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '16px',
-          border: '1px solid rgba(72, 229, 194, 0.25)',
-          background: 'linear-gradient(135deg, rgba(72, 229, 194, 0.06) 0%, rgba(11, 15, 25, 0.6) 100%)',
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (joinSessionInput.trim()) {
+            navigate(`/vote/${joinSessionInput.trim()}`);
+          }
         }}
+        style={{ display: 'flex', gap: '8px', flexDirection: isMobile ? 'column' : 'row' }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div
-            style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '12px',
-              background: 'rgba(72, 229, 194, 0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--accent-primary)',
-              flexShrink: 0,
-            }}
-          >
-            <Smartphone size={22} />
-          </div>
-          <div>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#FCFAF9', marginBottom: '3px' }}>
-              Audience Member? Join a Live Poll
-            </h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              Works from any network anywhere — enter the presenter's Unique Session ID:
-            </p>
-          </div>
-        </div>
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (joinSessionInput.trim()) {
-              navigate(`/vote/${joinSessionInput.trim()}`);
-            }
-          }}
-          style={{ display: 'flex', gap: '8px', flex: 1, maxWidth: '420px', minWidth: '260px' }}
+        <input
+          type="text"
+          placeholder="e.g. 6aacb98f5be43c0cbaadccaa"
+          value={joinSessionInput}
+          onChange={(e) => setJoinSessionInput(e.target.value)}
+          className="input-field"
+          style={{ padding: '9px 12px', fontSize: '0.85rem', flex: 1 }}
+        />
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={!joinSessionInput.trim()}
+          style={{ padding: '9px 14px', fontSize: '0.85rem', whiteSpace: 'nowrap', justifyContent: 'center' }}
         >
-          <input
-            type="text"
-            placeholder="Paste Unique Session ID..."
-            value={joinSessionInput}
-            onChange={(e) => setJoinSessionInput(e.target.value)}
-            className="input-field"
-            style={{ padding: '9px 14px', fontSize: '0.88rem' }}
-          />
-          <button
-            type="submit"
-            className="btn-primary"
-            disabled={!joinSessionInput.trim()}
-            style={{ padding: '9px 18px', fontSize: '0.88rem', whiteSpace: 'nowrap' }}
-          >
-            Join Poll
-            <ArrowRight size={15} />
-          </button>
-        </form>
-      </div>
+          Join Poll
+          <ArrowRight size={14} />
+        </button>
+      </form>
+    </div>
+  );
 
+  const renderBuilderContent = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
       {/* Success Notification */}
       {createdPoll && (
         <div
           className="glass-panel-glow"
           style={{
-            padding: '24px',
+            padding: '20px',
             borderRadius: 'var(--radius-md)',
-            marginBottom: '28px',
             background: 'rgba(16, 185, 129, 0.08)',
             border: '1px solid rgba(16, 185, 129, 0.3)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', color: '#10b981' }}>
-            <CheckCircle2 size={22} />
-            <h3 style={{ fontSize: '1.2rem', color: '#ffffff' }}>Your Multi-Question Poll Was Created!</h3>
+            <CheckCircle2 size={20} />
+            <h3 style={{ fontSize: '1.1rem', color: '#ffffff' }}>Your Polling Session Is Live!</h3>
           </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '16px' }}>
-            Session ID: <strong style={{ color: 'var(--text-primary)' }}>{createdPoll.id}</strong> ({createdPoll.questions?.length || 1} questions). Routing to projector view...
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '14px' }}>
+            Session ID: <strong style={{ color: 'var(--text-primary)' }}>{createdPoll.id}</strong> ({createdPoll.questions?.length || 1} questions).
           </p>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button
               type="button"
               className="btn-primary"
               onClick={() => navigate(`/present/${createdPoll.id}`)}
-              style={{ gap: '8px' }}
+              style={{ gap: '8px', padding: '9px 16px', fontSize: '0.88rem' }}
             >
-              <Play size={16} />
+              <Play size={15} fill="#000000" />
               Open Projector View
+            </button>
+            <button
+              type="button"
+              onClick={() => handleCopyVoteLink(createdPoll.id)}
+              className="btn-secondary"
+              style={{ gap: '6px', padding: '9px 14px', fontSize: '0.88rem' }}
+            >
+              <Copy size={15} />
+              {copiedPollId === createdPoll.id ? 'Copied Link!' : 'Copy Audience Link'}
             </button>
           </div>
         </div>
@@ -810,23 +1059,26 @@ export default function CreatorDashboard() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          gap: '10px',
-          marginBottom: '28px',
-          flexWrap: 'wrap',
+          justifyContent: isMobile ? 'flex-start' : 'flex-start',
+          gap: '8px',
+          overflowX: isMobile ? 'auto' : 'visible',
+          paddingBottom: isMobile ? '6px' : '0',
+          WebkitOverflowScrolling: 'touch',
+          flexWrap: isMobile ? 'nowrap' : 'wrap',
         }}
       >
         <span
           style={{
-            fontSize: '0.88rem',
+            fontSize: '0.82rem',
             color: 'var(--accent-cyan)',
             fontWeight: 600,
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '6px',
+            gap: '5px',
+            flexShrink: 0,
           }}
         >
-          <Sparkles size={16} />
+          <Sparkles size={14} />
           Presets:
         </span>
         {MULTI_QUESTION_TEMPLATES.map((tmpl, idx) => {
@@ -839,286 +1091,184 @@ export default function CreatorDashboard() {
               onClick={() => handleApplyPreset(tmpl)}
               className="btn-secondary"
               style={{
-                fontSize: '0.84rem',
-                padding: '8px 16px',
-                borderRadius: '12px',
+                fontSize: '0.8rem',
+                padding: '6px 12px',
+                borderRadius: '10px',
                 background: isSelected ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'rgba(255, 255, 255, 0.04)',
                 border: isSelected ? '1px solid rgba(255, 255, 255, 0.3)' : '1px solid rgba(255, 255, 255, 0.08)',
                 color: isSelected ? '#000000' : '#F8FAFC',
                 fontWeight: isSelected ? 700 : 500,
                 cursor: 'pointer',
-                boxShadow: isSelected ? '0 2px 12px rgba(72, 229, 194, 0.35)' : 'none',
-                backdropFilter: 'blur(10px)',
-                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                boxShadow: isSelected ? '0 2px 10px rgba(72, 229, 194, 0.35)' : 'none',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '8px',
+                gap: '5px',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
               }}
             >
-              {IconComp && <IconComp size={15} />}
-              {tmpl.name}
+              <IconComp size={13} />
+              <span>{tmpl.name}</span>
             </button>
           );
         })}
-
-        {(pollTitle || questions.some((q) => q.title || q.options.some((o) => o.text))) && (
-          <button
-            type="button"
-            onClick={handleResetForm}
-            className="btn-secondary"
-            style={{
-              fontSize: '0.82rem',
-              padding: '7px 14px',
-              borderRadius: 'var(--radius-full)',
-              background: 'rgba(239, 68, 68, 0.08)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              color: '#f87171',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontWeight: 600,
-            }}
-            title="Reset form to a clean, blank poll"
-          >
-            <RotateCcw size={13} />
-            Reset to Blank
-          </button>
-        )}
       </div>
 
-      {/* Error Alert */}
-      {errorMessage && (
-        <div
-          style={{
-            background: 'rgba(239, 68, 68, 0.12)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            borderRadius: 'var(--radius-md)',
-            padding: '14px 18px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            marginBottom: '24px',
-            color: '#fca5a5',
-            fontSize: '0.95rem',
-          }}
-        >
-          <AlertCircle size={20} color="#ef4444" />
-          <span>{errorMessage}</span>
-        </div>
-      )}
-
-      {/* Main Multi-Question Form */}
-      <form noValidate onSubmit={handlePollSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        {/* Session Title Card */}
-        <div className="glass-panel" style={{ padding: '24px 28px' }}>
-          <label
-            style={{
-              display: 'block',
-              fontSize: '0.95rem',
-              fontWeight: 700,
-              color: 'var(--text-primary)',
-              marginBottom: '8px',
-            }}
-          >
-            Poll Session Title
+      {/* Main Multi-Question Poll Form */}
+      <form onSubmit={(e) => e.preventDefault()} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Session / Poll Title Card */}
+        <div className="glass-panel" style={{ padding: isMobile ? '18px 16px' : '24px' }}>
+          <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 700, marginBottom: '8px', color: 'var(--text-primary)' }}>
+            Session Title
           </label>
           <input
             type="text"
             className="input-field"
-            placeholder="e.g. Weekly Tech Sprint Poll (or pick a preset above)"
+            placeholder="e.g. Sprint Retrospective & Tech Architecture 2026"
             value={pollTitle}
             onChange={(e) => setPollTitle(e.target.value)}
-            style={{ fontSize: '1.05rem', fontWeight: 600 }}
+            style={{ fontSize: isMobile ? '0.92rem' : '1rem', padding: '11px 14px' }}
           />
         </div>
 
-        {/* Dynamic Questions List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Questions Cards */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           {questions.map((q, qIdx) => (
             <div
               key={q.id || qIdx}
               className="glass-panel"
               style={{
-                padding: '24px 28px',
-                border: '1px solid rgba(252, 250, 249, 0.16)',
-                borderRadius: '16px',
+                padding: isMobile ? '18px 16px' : '24px',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
                 position: 'relative',
               }}
             >
-              {/* Question Card Header */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '16px',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span
-                    style={{
-                      background: '#48E5C2',
-                      color: '#000000',
-                      fontSize: '0.85rem',
-                      fontWeight: 800,
-                      padding: '4px 10px',
-                      borderRadius: '8px',
-                      fontFamily: 'var(--font-heading)',
-                    }}
-                  >
-                    Question #{qIdx + 1}
-                  </span>
-                  <span style={{ fontSize: '0.85rem', color: 'rgba(252, 250, 249, 0.65)' }}>
-                    ({q.options.length} choices &bull; min 2, max 4)
-                  </span>
-                </div>
+              {/* Question Header & Delete */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <span
+                  style={{
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    color: 'var(--accent-cyan)',
+                    background: 'rgba(72, 229, 194, 0.1)',
+                    padding: '3px 9px',
+                    borderRadius: '7px',
+                  }}
+                >
+                  Question {qIdx + 1} of {questions.length}
+                </span>
 
                 {questions.length > 1 && (
                   <button
                     type="button"
                     onClick={() => handleRemoveQuestion(qIdx)}
                     style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#ef4444',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '0.85rem',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                    }}
-                    title="Delete Question"
-                  >
-                    <Trash2 size={16} />
-                    <span>Delete</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Question Title Input */}
-              <div style={{ marginBottom: '18px' }}>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: '0.88rem',
-                    fontWeight: 600,
-                    color: 'var(--text-secondary)',
-                    marginBottom: '6px',
-                  }}
-                >
-                  Question Prompt
-                </label>
-                <input
-                  type="text"
-                  className="input-field"
-                  placeholder="e.g. What is your preferred architecture pattern?"
-                  value={q.title}
-                  onChange={(e) => handleQuestionTitleChange(qIdx, e.target.value)}
-                />
-              </div>
-
-              {/* Dynamic Options (min 2, max 4) */}
-              <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: '0.88rem',
-                    fontWeight: 600,
-                    color: 'var(--text-secondary)',
-                    marginBottom: '8px',
-                  }}
-                >
-                  Options (Choices)
-                </label>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {q.options.map((opt, oIdx) => (
-                    <div key={oIdx} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      {/* Option Letter Indicator */}
-                      <span
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '8px',
-                          background: opt.color || PALETTE[oIdx % PALETTE.length],
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 800,
-                          fontSize: '0.85rem',
-                          color: isLightColor(opt.color || PALETTE[oIdx % PALETTE.length]) ? '#000000' : '#fff',
-                          flexShrink: 0,
-                        }}
-                      >
-                        {String.fromCharCode(65 + oIdx)}
-                      </span>
-
-                      {/* Option Text Input */}
-                      <input
-                        type="text"
-                        className="input-field"
-                        placeholder={`Choice ${String.fromCharCode(65 + oIdx)}`}
-                        value={opt.text}
-                        onChange={(e) => handleOptionChange(qIdx, oIdx, e.target.value)}
-                      />
-
-                      {/* Remove Option Button (disabled if only 2 options) */}
-                      {q.options.length > 2 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveOption(qIdx, oIdx)}
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: 'var(--text-muted)',
-                            cursor: 'pointer',
-                            padding: '8px',
-                            borderRadius: '6px',
-                            transition: 'color 0.2s ease',
-                          }}
-                          title="Remove option"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Add Option Button (allowed up to 4 options) */}
-                {q.options.length < 4 && (
-                  <button
-                    type="button"
-                    onClick={() => handleAddOption(qIdx)}
-                    style={{
-                      marginTop: '12px',
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                      color: '#f87171',
+                      padding: '4px 9px',
+                      borderRadius: '7px',
+                      fontSize: '0.75rem',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '8px',
-                      background: 'none',
-                      border: '1px dashed var(--border-subtle)',
-                      color: 'var(--accent-cyan)',
-                      padding: '8px 14px',
-                      borderRadius: 'var(--radius-md)',
+                      gap: '4px',
                       cursor: 'pointer',
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      transition: 'all 0.2s ease',
                     }}
                   >
-                    <Plus size={14} />
-                    Add Choice ({q.options.length}/4)
+                    <Trash2 size={13} />
+                    <span>Remove</span>
                   </button>
                 )}
               </div>
+
+              {/* Question Input */}
+              <input
+                type="text"
+                className="input-field"
+                placeholder={`Type Question ${qIdx + 1}...`}
+                value={q.title}
+                onChange={(e) => handleQuestionTitleChange(qIdx, e.target.value)}
+                style={{ marginBottom: '14px', fontWeight: 600, fontSize: '0.94rem' }}
+              />
+
+              {/* Options */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+                {q.options.map((opt, oIdx) => (
+                  <div key={oIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '8px',
+                        background: opt.color || PALETTE[oIdx % PALETTE.length],
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 800,
+                        fontSize: '0.82rem',
+                        color: isLightColor(opt.color || PALETTE[oIdx % PALETTE.length]) ? '#000000' : '#fff',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {String.fromCharCode(65 + oIdx)}
+                    </span>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder={`Choice ${String.fromCharCode(65 + oIdx)}`}
+                      value={opt.text}
+                      onChange={(e) => handleOptionChange(qIdx, oIdx, e.target.value)}
+                      style={{ flex: 1, padding: '9px 12px', fontSize: '0.88rem' }}
+                    />
+                    {q.options.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveOption(qIdx, oIdx)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--text-muted)',
+                          cursor: 'pointer',
+                          padding: '6px',
+                        }}
+                        title="Remove choice"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Add Choice */}
+              {q.options.length < 4 && (
+                <button
+                  type="button"
+                  onClick={() => handleAddOption(qIdx)}
+                  style={{
+                    marginTop: '10px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    background: 'none',
+                    border: '1px dashed var(--border-subtle)',
+                    color: 'var(--accent-cyan)',
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  <Plus size={13} />
+                  Add Choice ({q.options.length}/4)
+                </button>
+              )}
             </div>
           ))}
         </div>
 
-        {/* Add Question Button */}
+        {/* Add Another Question */}
         <button
           type="button"
           onClick={handleAddQuestion}
@@ -1127,202 +1277,347 @@ export default function CreatorDashboard() {
             alignItems: 'center',
             justifyContent: 'center',
             gap: '8px',
-            background: 'rgba(72, 229, 194, 0.08)',
-            border: '2px dashed #48E5C2',
+            background: 'rgba(72, 229, 194, 0.06)',
+            border: '2px dashed rgba(72, 229, 194, 0.4)',
             color: '#48E5C2',
-            padding: '16px',
-            borderRadius: '16px',
+            padding: '13px',
+            borderRadius: '14px',
             cursor: 'pointer',
-            fontSize: '1rem',
+            fontSize: '0.92rem',
             fontWeight: 700,
-            fontFamily: 'var(--font-body)',
-            transition: 'all 0.2s ease',
           }}
         >
-          <Plus size={20} color="#48E5C2" />
+          <Plus size={17} color="#48E5C2" />
           Add Another Question to Session
         </button>
 
-        {/* Submit Button & Direct Error Alert */}
-        <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {errorMessage && (
-            <div
-              style={{
-                background: 'rgba(239, 68, 68, 0.15)',
-                border: '1px solid rgba(239, 68, 68, 0.4)',
-                borderRadius: '16px',
-                padding: '14px 18px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                color: '#fca5a5',
-                fontSize: '0.95rem',
-              }}
-            >
-              <AlertCircle size={20} color="#ef4444" flexShrink={0} />
-              <span>{errorMessage}</span>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={handlePollSubmit}
-            className="btn-primary"
-            disabled={isSubmitting}
+        {/* Error Alert */}
+        {errorMessage && (
+          <div
             style={{
-              width: '100%',
-              justifyContent: 'center',
-              padding: '16px',
-              fontSize: '1.05rem',
-              borderRadius: '16px',
-              background: '#48E5C2',
-              color: '#000000',
-              fontWeight: 800,
-              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.4)',
+              borderRadius: '12px',
+              padding: '11px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              color: '#fca5a5',
+              fontSize: '0.88rem',
             }}
           >
-            {isSubmitting ? (
-              <>
-                <Loader2 size={20} className="animate-spin" />
-                Saving Session to MongoDB & Opening Projector...
-              </>
-            ) : (
-              <>
-                <Play size={18} fill="#000000" />
-                Launch Multi-Question Poll & Open Presentation Screen
-                <ArrowRight size={20} />
-              </>
-            )}
-          </button>
-        </div>
-      </form>
-
-      {/* --- Section: Your Created Polls List --- */}
-      <div style={{ marginTop: '50px' }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '16px',
-          }}
-        >
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 700 }}>
-            Your Poll Sessions ({myPolls.length})
-          </h2>
-          <button
-            onClick={loadMyPolls}
-            className="btn-secondary"
-            style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-          >
-            Refresh List
-          </button>
-        </div>
-
-        {loadingPolls && myPolls.length === 0 ? (
-          <p style={{ color: 'var(--text-secondary)' }}>Loading your polls from MongoDB...</p>
-        ) : myPolls.length === 0 ? (
-          <div className="glass-panel" style={{ padding: '32px', textAlign: 'center' }}>
-            <p style={{ color: 'var(--text-secondary)' }}>
-              You haven't created any polls yet. Build your first multi-question poll above!
-            </p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {myPolls.map((p) => {
-              const qCount = p.questions?.length || (p.question ? 1 : 0);
-              const displayTitle = p.title || p.question || 'Untitled Poll Session';
-              return (
-                <div
-                  key={p.id}
-                  className="glass-panel"
-                  style={{
-                    padding: '18px 22px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: '16px',
-                  }}
-                >
-                  <div style={{ maxWidth: '540px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                      <span
-                        style={{
-                          fontSize: '0.75rem',
-                          color: 'var(--accent-cyan)',
-                          background: 'rgba(72, 229, 194, 0.15)',
-                          border: '1px solid rgba(72, 229, 194, 0.3)',
-                          padding: '2px 8px',
-                          borderRadius: '6px',
-                          fontWeight: 600,
-                        }}
-                      >
-                        ID: {p.id}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: '0.75rem',
-                          color: p.status === 'completed' ? '#F3D3BD' : '#48E5C2',
-                          background: p.status === 'completed' ? 'rgba(243, 211, 189, 0.15)' : 'rgba(72, 229, 194, 0.15)',
-                          border: `1px solid ${p.status === 'completed' ? 'rgba(243, 211, 189, 0.35)' : 'rgba(72, 229, 194, 0.35)'}`,
-                          padding: '2px 8px',
-                          borderRadius: '6px',
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.04em',
-                        }}
-                      >
-                        {p.status === 'completed' ? 'Finished' : 'Active'}
-                      </span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {qCount} question{qCount > 1 ? 's' : ''} &bull; {p.total_votes || 0} votes
-                      </span>
-                    </div>
-                    <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '4px', wordBreak: 'break-word' }}>
-                      {displayTitle}
-                    </h3>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <Link
-                      to={`/present/${p.id}`}
-                      className="btn-primary"
-                      style={{ padding: '8px 16px', fontSize: '0.85rem', gap: '6px' }}
-                    >
-                      <Play size={14} />
-                      Projector View
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => handleDeletePoll(p.id)}
-                      disabled={deletingPollId === p.id}
-                      className="btn-secondary"
-                      style={{
-                        padding: '8px 14px',
-                        fontSize: '0.85rem',
-                        gap: '6px',
-                        color: '#ff6b6b',
-                        borderColor: 'rgba(255, 107, 107, 0.4)',
-                        background: 'rgba(255, 107, 107, 0.08)',
-                        cursor: deletingPollId === p.id ? 'not-allowed' : 'pointer',
-                        opacity: deletingPollId === p.id ? 0.7 : 1,
-                      }}
-                      title="Delete this polling session"
-                    >
-                      {deletingPollId === p.id ? (
-                        <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
-                      ) : (
-                        <Trash2 size={14} />
-                      )}
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+            <AlertCircle size={17} color="#ef4444" flexShrink={0} />
+            <span>{errorMessage}</span>
           </div>
         )}
+
+        {/* Launch Button */}
+        <button
+          type="button"
+          onClick={handlePollSubmit}
+          className="btn-primary"
+          disabled={isSubmitting}
+          style={{
+            width: '100%',
+            justifyContent: 'center',
+            padding: '14px',
+            fontSize: '0.98rem',
+            borderRadius: '14px',
+            background: '#48E5C2',
+            color: '#000000',
+            fontWeight: 800,
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 size={18} className="animate-spin" />
+              Saving Session to MongoDB...
+            </>
+          ) : (
+            <>
+              <Play size={16} fill="#000000" />
+              Launch Session & Open Projector
+              <ArrowRight size={17} />
+            </>
+          )}
+        </button>
+      </form>
+    </div>
+  );
+
+  // --- Profile Bar Component ---
+  const renderProfileBar = () => (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: isMobile ? '10px 14px' : '14px 20px',
+        borderRadius: 'var(--radius-md)',
+        background: 'rgba(255, 255, 255, 0.03)',
+        border: '1px solid var(--border-subtle)',
+        marginBottom: isMobile ? '18px' : '28px',
+        flexWrap: 'wrap',
+        gap: '10px',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div
+          style={{
+            width: isMobile ? '32px' : '38px',
+            height: isMobile ? '32px' : '38px',
+            borderRadius: '50%',
+            background: 'var(--accent-gradient)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontWeight: 700,
+            fontSize: isMobile ? '0.85rem' : '0.95rem',
+            overflow: 'hidden',
+            border: '1.5px solid rgba(72, 229, 194, 0.4)',
+          }}
+        >
+          {currentUser.avatar ? (
+            <img
+              src={currentUser.avatar}
+              alt={currentUser.name || 'Creator'}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+          ) : currentUser.name ? (
+            currentUser.name.charAt(0).toUpperCase()
+          ) : (
+            <User size={16} />
+          )}
+        </div>
+        <div>
+          <div style={{ fontSize: isMobile ? '0.88rem' : '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+            Welcome, {currentUser.name}
+          </div>
+          <div style={{ fontSize: isMobile ? '0.74rem' : '0.8rem', color: 'var(--text-muted)' }}>
+            {currentUser.email} &bull; <span style={{ color: '#10b981' }}>Verified Creator</span>
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={handleLogout}
+        className="btn-secondary"
+        style={{ padding: isMobile ? '6px 10px' : '8px 14px', fontSize: isMobile ? '0.78rem' : '0.85rem', gap: '5px' }}
+      >
+        <LogOut size={13} />
+        Sign Out
+      </button>
+    </div>
+  );
+
+  // --- MOBILE LAYOUT (<768px) ---
+  if (isMobile) {
+    return (
+      <main
+        style={{
+          maxWidth: '100%',
+          margin: '0 auto',
+          padding: '14px 14px calc(80px + var(--safe-bottom))',
+          width: '100%',
+        }}
+      >
+        {renderProfileBar()}
+
+        {/* Segmented Mobile Tab Switcher */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr',
+            background: 'rgba(0, 0, 0, 0.45)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '12px',
+            padding: '4px',
+            marginBottom: '18px',
+            gap: '4px',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setMobileTab('builder')}
+            style={{
+              padding: '9px 4px',
+              border: 'none',
+              borderRadius: '9px',
+              background: mobileTab === 'builder' ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'transparent',
+              color: mobileTab === 'builder' ? '#000000' : 'var(--text-secondary)',
+              fontWeight: mobileTab === 'builder' ? 700 : 500,
+              fontSize: '0.78rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <Rocket size={13} />
+            <span>Builder</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab('sessions')}
+            style={{
+              padding: '9px 4px',
+              border: 'none',
+              borderRadius: '9px',
+              background: mobileTab === 'sessions' ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'transparent',
+              color: mobileTab === 'sessions' ? '#000000' : 'var(--text-secondary)',
+              fontWeight: mobileTab === 'sessions' ? 700 : 500,
+              fontSize: '0.78rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <ListOrdered size={13} />
+            <span>Polls ({myPolls.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab('join')}
+            style={{
+              padding: '9px 4px',
+              border: 'none',
+              borderRadius: '9px',
+              background: mobileTab === 'join' ? 'linear-gradient(135deg, #48E5C2 0%, #36d4b2 100%)' : 'transparent',
+              color: mobileTab === 'join' ? '#000000' : 'var(--text-secondary)',
+              fontWeight: mobileTab === 'join' ? 700 : 500,
+              fontSize: '0.78rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <Smartphone size={13} />
+            <span>Join PIN</span>
+          </button>
+        </div>
+
+        {mobileTab === 'builder' && (
+          <div>
+            <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+              <h2 style={{ fontSize: '1.45rem', marginBottom: '4px' }}>
+                Design <span className="gradient-text">Live Poll Session</span>
+              </h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
+                Craft interactive questions with real-time analytics.
+              </p>
+            </div>
+            {renderBuilderContent()}
+          </div>
+        )}
+
+        {mobileTab === 'sessions' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Your Sessions ({myPolls.length})</h2>
+              <button
+                onClick={loadMyPolls}
+                className="btn-secondary"
+                style={{ padding: '5px 10px', fontSize: '0.78rem' }}
+              >
+                Refresh
+              </button>
+            </div>
+            {renderPollSessionsList(false)}
+          </div>
+        )}
+
+        {mobileTab === 'join' && (
+          <div>
+            {renderQuickJoinCard()}
+          </div>
+        )}
+      </main>
+    );
+  }
+
+  // --- LAPTOP / DESKTOP STUDIO LAYOUT (>=768px) ---
+  return (
+    <main
+      style={{
+        maxWidth: '1360px',
+        margin: '0 auto',
+        padding: '36px 28px',
+        width: '100%',
+      }}
+    >
+      {renderProfileBar()}
+
+      {/* Header Title */}
+      <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '5px 14px',
+            borderRadius: 'var(--radius-full)',
+            background: 'rgba(99, 102, 241, 0.12)',
+            border: '1px solid rgba(99, 102, 241, 0.3)',
+            color: 'var(--accent-primary)',
+            fontSize: '0.82rem',
+            fontWeight: 600,
+            marginBottom: '10px',
+          }}
+        >
+          <ListOrdered size={14} />
+          Creator Studio & Dynamic Multi-Question Suite
+        </div>
+        <h1 style={{ fontSize: '2.4rem', marginBottom: '8px' }}>
+          Design Your <span className="gradient-text">Live Polling Session</span>
+        </h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.96rem', maxWidth: '620px', margin: '0 auto' }}>
+          Create multiple interactive questions under a single session. Presenters can cycle questions and conclude with an animated Leaderboard!
+        </p>
+      </div>
+
+      {/* Studio 2-Column Grid */}
+      <div className="creator-studio-layout">
+        {/* Left/Main Column: Form & Questions */}
+        <div>
+          {renderBuilderContent()}
+        </div>
+
+        {/* Right Sidebar Column: Quick Join & Session Manager */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+          {renderQuickJoinCard()}
+
+          {/* Sessions List Panel */}
+          <div className="glass-panel" style={{ padding: '22px 20px', borderRadius: '18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Layers size={17} color="var(--accent-primary)" />
+                <h3 style={{ fontSize: '1.08rem', fontWeight: 700 }}>Your Sessions ({myPolls.length})</h3>
+              </div>
+              <button
+                onClick={loadMyPolls}
+                className="btn-secondary"
+                style={{ padding: '5px 10px', fontSize: '0.78rem' }}
+              >
+                Refresh
+              </button>
+            </div>
+            {renderPollSessionsList(true)}
+          </div>
+        </div>
       </div>
     </main>
   );
